@@ -1,0 +1,6 @@
+{
+  "name": "Virtual Stock Trading Simulator",
+  "description": "Real-time stock market simulation with live NYSE and NASDAQ market data feeds, paper trading with virtual capital, portfolio tracking, and participant leaderboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

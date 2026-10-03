@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isParticipant() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'participant';
+    }
+
+    function isSimulationRunning() {
+      return get(/databases/$(database)/documents/simulation/config).data.status == 'RUNNING';
+    }
+
+    // Users — read own profile, admin reads all
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Participants can only update their own doc — but NOT cash, portfolioValue directly
+      // (those are updated by server-side trade logic via runTransaction)
+      allow update: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys()
+           .hasAny(['currentCash', 'portfolioValue', 'startingBalance', 'role']));
+    }
+
+    // Stocks — everyone reads, only admin writes
+    match /stocks/{stockId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Holdings — users read/write their own via runTransaction in trade.ts
+    match /holdings/{holdingId} {
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isSignedIn();
+    }
+
+    // Transactions — users create their own, read their own, admin reads all
+    match /transactions/{txId} {
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update, delete: if false; // Transactions are immutable
+    }
+
+    // News — everyone reads, admin writes
+    match /news/{newsId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Price history — everyone reads, only engine (authenticated users) writes
+    match /price_history/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Simulation config & heartbeat — everyone reads, admin + engine writes
+    match /simulation/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn(); // Engine + admin both write here
+    }
+
+    // Scenario configs (read-only after deploy)
+    match /scenarios/{scenarioId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
