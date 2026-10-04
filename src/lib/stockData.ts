@@ -1,6 +1,7 @@
 import { collection, doc, writeBatch, getDocs, setDoc, serverTimestamp, Timestamp, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { FICTIONAL_STOCKS, LEGACY_COLLECTIONS as COLLECTIONS, SIMULATION_DOCS } from './shared-types';
+import { fetchYahooReferencePrices } from './sessionManager';
 
 // DefaultStock removed — fictional stocks use FICTIONAL_STOCKS from shared-types
 
@@ -24,8 +25,8 @@ export const DEFAULT_NEWS = [
 ];
 
 /**
- * Seeds the 8 fictional stocks into Firestore if they don't exist yet.
- * Does NOT call any external API — prices come from shared-types.ts only.
+ * Seeds the legacy stock view with Yahoo reference prices when available.
+ * Session competitions use seedSessionStocks in sessionManager.
  */
 export async function seedDefaultStocks() {
   const stocksRef = collection(db, COLLECTIONS.STOCKS);
@@ -35,16 +36,18 @@ export async function seedDefaultStocks() {
   const batch = writeBatch(db);
   let added = 0;
   const now = Date.now();
+  const yahooPrices = await fetchYahooReferencePrices();
 
   for (const stock of FICTIONAL_STOCKS) {
     const normTicker = stock.ticker.trim().toUpperCase();
     if (!existingTickers.has(normTicker)) {
       const newRef = doc(stocksRef);
-      const price = stock.currentPrice;
+      const price = yahooPrices.get(stock.yahooSymbol) || stock.currentPrice;
       const spread = 0.02;
 
       batch.set(newRef, {
         ticker: normTicker,
+        yahooSymbol: stock.yahooSymbol,
         name: stock.name,
         sector: stock.sector,
         currentPrice: price,
@@ -61,7 +64,10 @@ export async function seedDefaultStocks() {
         dayLow: price,
         sessionVolume: 0,
         isActive: true,
-        isRealFeed: false,
+        source: yahooPrices.has(stock.yahooSymbol) ? 'Yahoo Finance' : 'Fallback price (Yahoo unavailable)',
+        referencePrice: price,
+        lastYahooSync: yahooPrices.has(stock.yahooSymbol) ? serverTimestamp() : null,
+        isRealFeed: yahooPrices.has(stock.yahooSymbol),
         createdAt: serverTimestamp(),
         lastUpdated: serverTimestamp(),
       });
@@ -115,7 +121,8 @@ export async function purgeAllCrypto() {
 }
 
 /**
- * No-op kept for backward compatibility — no live API in fictional setup.
+ * Session prices are intentionally not overwritten by quote refreshes.
+ * Keep this compatibility function for the legacy watchlist controls.
  */
 export async function syncLiveMarketPrices(): Promise<{ updatedCount: number; timestamp: number }> {
   return { updatedCount: 0, timestamp: Date.now() };

@@ -119,12 +119,15 @@ export default function SimulationEngine() {
 
       if (stocksSnap.empty) return;
 
+      const latestSessionSnap = await getDoc(doc(db, COLLECTIONS.SESSIONS, sessionId));
+      if (latestSessionSnap.data()?.status !== 'RUNNING') return;
+
       const batch = writeBatch(db);
 
       for (const stockDoc of stocksSnap.docs) {
         const stock = stockDoc.data();
-        const currentPrice: number = stock.currentPrice || 100;
-        const volatility: number = stock.volatility || 0.015;
+        const currentPrice: number = Number(stock.currentPrice) > 0 ? Number(stock.currentPrice) : 100;
+        const volatility: number = Math.min(Math.max(Number(stock.volatility) || 0.015, 0.001), 0.02);
 
         // Normal random walk
         const randomChange = (Math.random() - 0.5) * 2 * volatility;
@@ -142,10 +145,10 @@ export default function SimulationEngine() {
             SHARP_DOWN:    -0.013,
           };
           const impact = (activeEvent.affectedStocks || []).find(
-            (s: any) => s.ticker === stock.ticker
+            (s: any) => s.ticker === stock.ticker || s.ticker === stock.yahooSymbol
           );
           if (impact) {
-            newPrice = newPrice * (1 + (impactMap[impact.strength] ?? 0));
+            newPrice = newPrice * (1 + (impact.percentPerTick ?? impactMap[impact.strength] ?? 0));
           }
         }
 

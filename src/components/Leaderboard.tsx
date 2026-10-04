@@ -55,7 +55,7 @@ export default function Leaderboard() {
   const top3 = users.slice(0, 3);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full max-h-[520px] min-h-0">
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -132,7 +132,7 @@ export default function Leaderboard() {
       </div>
 
       {/* Leaderboard Table */}
-      <div className="flex-1 overflow-y-auto min-h-[260px]">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <table className="w-full text-sm text-left">
           <thead className="text-[11px] uppercase font-semibold text-zinc-500 bg-zinc-50/80 border-b border-zinc-100 sticky top-0">
             <tr>

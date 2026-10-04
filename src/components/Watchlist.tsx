@@ -20,10 +20,11 @@ import {
   Clock,
   ShieldCheck,
   ChevronRight,
-  RefreshCw,
+  ChevronDown,
+  ArrowDownAZ,
   X
 } from 'lucide-react';
-import { seedDefaultStocks, syncLiveMarketPrices } from '../lib/stockData';
+import { seedDefaultStocks } from '../lib/stockData';
 import Sparkline from './Sparkline';
 
 interface WatchlistProps {
@@ -50,6 +51,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
   const [selectedSector, setSelectedSector] = useState('ALL');
   const [sortBy, setSortBy] = useState<'GAINERS' | 'LOSERS' | 'PRICE_HIGH' | 'PRICE_LOW' | 'ALPHA'>('GAINERS');
   const [viewMode, setViewMode] = useState<'TABLE' | 'GRID'>('TABLE');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
   // Price history cache for mini sparklines
@@ -141,19 +143,6 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
     }
   };
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefreshLiveQuotes = async () => {
-    setIsRefreshing(true);
-    try {
-      await syncLiveMarketPrices();
-    } catch (err) {
-      console.warn('Real market sync notice:', err);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   const handleQuickStartSim = async () => {
     try {
       await setDoc(
@@ -168,7 +157,6 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
         },
         { merge: true }
       );
-      await syncLiveMarketPrices().catch(() => {});
     } catch (e) {
       console.error('Quick start sim error:', e);
     }
@@ -274,7 +262,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
   const isAdmin = userData?.role === 'admin';
 
   return (
-    <div className="bg-white rounded-2xl shadow-xs border border-zinc-200/90 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-xs border border-zinc-200/90 overflow-hidden flex flex-col h-full max-h-[680px] min-h-0">
       {/* 1. Market Telemetry Ribbon */}
       <div className="bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-3 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3">
@@ -389,17 +377,57 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
 
             {/* Sort Select */}
             <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-700 font-semibold outline-none cursor-pointer hover:bg-zinc-50 transition-colors shadow-2xs"
-              >
-                <option value="GAINERS">🚀 Top Gainers</option>
-                <option value="LOSERS">🔻 Top Losers</option>
-                <option value="PRICE_HIGH">💰 Price: High to Low</option>
-                <option value="PRICE_LOW">🏷️ Price: Low to High</option>
-                <option value="ALPHA">🔤 Symbol: A to Z</option>
-              </select>
+              {(() => {
+                const sortOptions = [
+                  { value: 'GAINERS', label: 'Top Gainers', icon: TrendingUp },
+                  { value: 'LOSERS', label: 'Top Losers', icon: TrendingDown },
+                  { value: 'PRICE_HIGH', label: 'Price: High to Low', icon: ArrowDownAZ },
+                  { value: 'PRICE_LOW', label: 'Price: Low to High', icon: ArrowUpDown },
+                  { value: 'ALPHA', label: 'Symbol: A to Z', icon: ArrowDownAZ },
+                ] as const;
+                const selectedSort = sortOptions.find((option) => option.value === sortBy) || sortOptions[0];
+                const SortIcon = selectedSort.icon;
+
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsSortMenuOpen((open) => !open)}
+                      className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-700 font-semibold outline-none cursor-pointer hover:bg-zinc-50 transition-colors shadow-2xs"
+                      aria-expanded={isSortMenuOpen}
+                    >
+                      <SortIcon className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>{selectedSort.label}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                    </button>
+                    {isSortMenuOpen && (
+                      <div className="absolute right-0 top-full z-30 mt-1 min-w-[190px] rounded-xl border border-zinc-200 bg-white p-1 shadow-lg">
+                        {sortOptions.map((option) => {
+                          const OptionIcon = option.icon;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => {
+                                setSortBy(option.value);
+                                setIsSortMenuOpen(false);
+                              }}
+                              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-colors ${
+                                sortBy === option.value
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'text-zinc-700 hover:bg-zinc-50'
+                              }`}
+                            >
+                              <OptionIcon className="w-3.5 h-3.5 text-zinc-500" />
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* View Mode Toggle (Table vs Bento Grid) */}
@@ -428,16 +456,6 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
               </button>
             </div>
 
-            {/* Sync Live Quotes Button */}
-            <button
-              onClick={handleRefreshLiveQuotes}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:text-zinc-900 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-              title="Fetch fresh real-time quotes directly from the exchange"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Sync Live'}</span>
-            </button>
           </div>
         </div>
 
@@ -469,7 +487,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
       {/* 3. Main Display: TABLE or GRID */}
       {viewMode === 'TABLE' ? (
         /* Professional Terminal Table View */
-        <div className="overflow-x-auto">
+        <div className="flex-1 min-h-0 overflow-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-zinc-200/80 bg-zinc-50/60 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">

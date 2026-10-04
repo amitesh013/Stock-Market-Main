@@ -2,7 +2,8 @@ import {
   collection, getDocs, writeBatch, doc, serverTimestamp, Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { FICTIONAL_STOCKS, COLLECTIONS } from './shared-types';
+import { FICTIONAL_STOCKS } from './shared-types';
+import { fetchYahooReferencePrices } from './sessionManager';
 // Note: standalone seeder replaced by sessionManager.seedSessionStocks()
 
 export async function seedFictionalStocks(): Promise<number> {
@@ -19,19 +20,26 @@ export async function seedFictionalStocks(): Promise<number> {
 
   const batch = writeBatch(db);
   const now = Date.now();
+  const yahooPrices = await fetchYahooReferencePrices();
 
   for (const stock of toAdd) {
     const ref = doc(stocksRef);
+    const price = yahooPrices.get(stock.yahooSymbol) || stock.currentPrice;
     batch.set(ref, {
       ...stock,
-      dayOpenPrice: stock.currentPrice,
-      dayHigh: stock.currentPrice,
-      dayLow: stock.currentPrice,
+      currentPrice: price,
+      initialPrice: price,
+      referencePrice: price,
+      dayOpenPrice: price,
+      dayHigh: price,
+      dayLow: price,
       change: 0,
       changePercent: 0,
       trend: 0,
       isActive: true,
-      isRealFeed: false,
+      source: yahooPrices.has(stock.yahooSymbol) ? 'Yahoo Finance' : 'Fallback price (Yahoo unavailable)',
+      lastYahooSync: yahooPrices.has(stock.yahooSymbol) ? serverTimestamp() : null,
+      isRealFeed: yahooPrices.has(stock.yahooSymbol),
       createdAt: serverTimestamp(),
       lastUpdated: serverTimestamp(),
     });
@@ -40,7 +48,7 @@ export async function seedFictionalStocks(): Promise<number> {
     batch.set(histRef, {
       stockId: ref.id,
       ticker: stock.ticker,
-      price: stock.currentPrice,
+      price,
       timestamp: Timestamp.fromDate(new Date(now)),
       activeNewsEventId: null,
     });

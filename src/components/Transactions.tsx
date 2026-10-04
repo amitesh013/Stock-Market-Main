@@ -40,7 +40,7 @@ export default function Transactions() {
   }, [user, sessionId]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full max-h-[520px] min-h-0">
       <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -53,7 +53,7 @@ export default function Transactions() {
         </span>
       </div>
       
-      <div className="flex-1 overflow-y-auto min-h-[260px]">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <table className="w-full text-sm text-left">
           <thead className="text-xs uppercase font-semibold text-zinc-500 bg-zinc-50/50 border-b border-zinc-100 sticky top-0">
             <tr>

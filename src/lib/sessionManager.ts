@@ -8,6 +8,34 @@ import {
   FICTIONAL_STOCKS, type Session, type SessionStatus
 } from './shared-types';
 
+interface YahooQuote {
+  symbol?: string;
+  price?: number;
+}
+
+export async function fetchYahooReferencePrices(): Promise<Map<string, number>> {
+  const symbols = FICTIONAL_STOCKS.map(stock => stock.yahooSymbol).join(',');
+  const prices = new Map<string, number>();
+
+  try {
+    const response = await fetch(`/api/stocks/quotes?symbols=${encodeURIComponent(symbols)}`);
+    if (!response.ok) throw new Error(`Yahoo quotes returned HTTP ${response.status}`);
+
+    const payload = await response.json() as { quotes?: YahooQuote[] };
+    for (const quote of payload.quotes || []) {
+      const symbol = quote.symbol?.replace(/\./g, '-').toUpperCase();
+      const price = Number(quote.price);
+      if (symbol && Number.isFinite(price) && price > 0) {
+        prices.set(symbol, price);
+      }
+    }
+  } catch (error) {
+    console.error('Yahoo reference price fetch failed; using fallback prices.', error);
+  }
+
+  return prices;
+}
+
 function generateSessionCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -50,32 +78,45 @@ export async function getSessionByCode(code: string): Promise<Session | null> {
   return { id: d.id, ...d.data() } as Session;
 }
 
-export async function seedSessionStocks(sessionId: string): Promise<number> {
+export async function seedSessionStocks(sessionId: string, refreshReference = false): Promise<number> {
   const stocksRef = collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.STOCKS);
   const existing = await getDocs(stocksRef);
-  if (!existing.empty) return 0;
+  if (!existing.empty && !refreshReference) return 0;
 
   const now = Date.now();
   const batch: Promise<void>[] = [];
+  const yahooPrices = await fetchYahooReferencePrices();
+
   for (const stock of FICTIONAL_STOCKS) {
-    const ref = doc(stocksRef);
-    batch.push(setDoc(ref, {
+    const existingDoc = existing.docs.find(d => d.data()?.ticker === stock.ticker);
+    const ref = existingDoc?.ref || doc(stocksRef);
+    const yahooPrice = yahooPrices.get(stock.yahooSymbol);
+    const referencePrice = yahooPrice || stock.currentPrice;
+    const stockState = {
       ...stock,
+      currentPrice: referencePrice,
+      initialPrice: referencePrice,
+      dayOpenPrice: referencePrice,
+      referencePrice,
+      source: yahooPrice ? 'Yahoo Finance' : 'Fallback price (Yahoo unavailable)',
+      lastYahooSync: yahooPrice ? serverTimestamp() : null,
       lastUpdated: serverTimestamp(),
-    }));
+    };
+
+    batch.push(setDoc(ref, stockState, { merge: Boolean(existingDoc) }));
     // Seed initial price_history point
     const histRef = doc(collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.PRICE_HISTORY));
     batch.push(setDoc(histRef, {
       stockId: ref.id,
       ticker: stock.ticker,
-      price: stock.currentPrice,
+      price: referencePrice,
       timestamp: Timestamp.fromDate(new Date(now)),
       sessionId,
       activeNewsEventId: null,
     }));
   }
   await Promise.all(batch);
-  return FICTIONAL_STOCKS.length;
+  return existing.empty ? FICTIONAL_STOCKS.length : 0;
 }
 
 export async function joinSession(

@@ -10,6 +10,7 @@ interface Props {
 
 export default function NewsEventBanner({ sessionId }: Props) {
   const [activeEvent, setActiveEvent] = useState<any>(null);
+  const [sessionStatus, setSessionStatus] = useState<string>('LOBBY');
   const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
@@ -22,8 +23,20 @@ export default function NewsEventBanner({ sessionId }: Props) {
   }, [sessionId]);
 
   useEffect(() => {
+    if (!sessionId) return;
+    return onSnapshot(
+      doc(db, COLLECTIONS.SESSIONS, sessionId),
+      (snap) => setSessionStatus(snap.data()?.status || 'LOBBY')
+    );
+  }, [sessionId]);
+
+  useEffect(() => {
     if (!activeEvent || activeEvent.isExpired) { setCountdown(0); return; }
     const tick = () => {
+      if (sessionStatus === 'PAUSED' || activeEvent.isPaused) {
+        setCountdown(Number(activeEvent.pausedRemainingSeconds) || 0);
+        return;
+      }
       const exp = activeEvent.expiresAt?.toMillis?.();
       if (!exp) return;
       setCountdown(Math.max(0, Math.floor((exp - Date.now()) / 1000)));
@@ -31,7 +44,7 @@ export default function NewsEventBanner({ sessionId }: Props) {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [activeEvent]);
+  }, [activeEvent, sessionStatus]);
 
   const fmt = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -45,21 +58,12 @@ export default function NewsEventBanner({ sessionId }: Props) {
     );
   }
 
-  const isPos = activeEvent.type === 'POSITIVE';
-  const isMixed = activeEvent.type === 'MIXED';
-
   return (
-    <div className={`rounded-2xl border px-4 py-3 space-y-2 ${
-      isPos ? 'bg-emerald-50 border-emerald-200' :
-      isMixed ? 'bg-amber-50 border-amber-200' :
-      'bg-rose-50 border-rose-200'
-    }`}>
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Zap className={`w-4 h-4 ${isPos ? 'text-emerald-600' : isMixed ? 'text-amber-600' : 'text-rose-600'}`} />
-          <span className={`text-[11px] font-extrabold uppercase tracking-wider ${
-            isPos ? 'text-emerald-700' : isMixed ? 'text-amber-700' : 'text-rose-700'
-          }`}>
+          <Zap className="w-4 h-4 text-zinc-600" />
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-700">
             Market News Event Active
           </span>
         </div>

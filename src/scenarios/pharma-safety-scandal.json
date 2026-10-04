@@ -1,17 +1,10 @@
 {
   "id": "pharma-safety-scandal",
-  "headline": "💊 Pharma Scandal: Moon Pharma's Flagship Drug Linked to 200+ Adverse Events",
-  "description": "Health authorities across 12 countries issue emergency warnings against Moon Pharma's best-selling drug after it is linked to over 200 serious adverse events. The company faces immediate regulatory investigations and product liability lawsuits worth billions. Other sectors remain unaffected as the crisis is isolated to Moon Pharma.",
+  "headline": "Healthcare Sector Developments",
+  "description": "New information surrounding a medical product creates uncertainty across the healthcare sector.",
   "type": "NEGATIVE",
   "durationSeconds": 900,
   "affectedStocks": [
-    { "ticker": "MOON",      "strength": "SHARP_DOWN" },
-    { "ticker": "GOOGL",     "strength": "NO_IMPACT" },
-    { "ticker": "BADBURY",   "strength": "NO_IMPACT" },
-    { "ticker": "FPMORGAN",  "strength": "NO_IMPACT" },
-    { "ticker": "ABIBANK",   "strength": "NO_IMPACT" },
-    { "ticker": "FLOPCART",  "strength": "NO_IMPACT" },
-    { "ticker": "LPGREEN",   "strength": "NO_IMPACT" },
-    { "ticker": "ZXDEFENCE", "strength": "NO_IMPACT" }
+    { "ticker": "PFE", "strength": "SHARP_DOWN" }
   ]
 }

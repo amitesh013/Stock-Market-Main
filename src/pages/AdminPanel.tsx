@@ -8,6 +8,7 @@ import {
   updateDoc, 
   deleteDoc, 
   getDocs, 
+  getDoc,
   writeBatch,
   serverTimestamp, 
   Timestamp 
@@ -58,6 +59,7 @@ export default function AdminPanel() {
   const [stocks, setStocks] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [allHoldings, setAllHoldings] = useState<any[]>([]);
+  const [currentSessionPortfolios, setCurrentSessionPortfolios] = useState<any[]>([]);
 
   // Simulation Duration setup
   const [startingCashAmount, setStartingCashAmount] = useState<number>(100000);
@@ -130,6 +132,7 @@ export default function AdminPanel() {
       setStocks([]);
       setNews([]);
       setAllHoldings([]);
+      setCurrentSessionPortfolios([]);
       return;
     }
 
@@ -146,11 +149,15 @@ export default function AdminPanel() {
     const unsubHoldings = onSnapshot(sessionPath(SESSION_SUBCOLLECTIONS.HOLDINGS), (snap) => {
       setAllHoldings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
+    const unsubPortfolios = onSnapshot(sessionPath(SESSION_SUBCOLLECTIONS.PORTFOLIOS), (snap) => {
+      setCurrentSessionPortfolios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
 
     return () => {
       unsubStocks();
       unsubNews();
       unsubHoldings();
+      unsubPortfolios();
     };
   }, [activeSessionId]);
 
@@ -208,11 +215,30 @@ export default function AdminPanel() {
     if (!activeSessionId) return;
     try {
       setActionLoading(true);
+      if (activeSession?.status === 'LOBBY') {
+        await seedSessionStocks(activeSessionId, true);
+      } else if (activeSession?.status === 'PAUSED') {
+        const eventRef = doc(db, COLLECTIONS.SESSIONS, activeSessionId, 'meta', SESSION_META_DOCS.ACTIVE_EVENT);
+        const eventSnap = await getDoc(eventRef);
+        const event = eventSnap.exists() ? eventSnap.data() : null;
+        const pausedRemaining = Number(event?.pausedRemainingSeconds);
+        if (event && !event.isExpired && Number.isFinite(pausedRemaining) && pausedRemaining >= 0) {
+          const resumedExpiresAt = Timestamp.fromDate(new Date(Date.now() + pausedRemaining * 1000));
+          await setDoc(eventRef, {
+            expiresAt: resumedExpiresAt,
+            pausedAt: null,
+            pausedRemainingSeconds: null,
+            isPaused: false,
+          }, { merge: true });
+          await setDoc(doc(db, COLLECTIONS.SESSIONS, activeSessionId), {
+            activeNewsEventExpiresAt: resumedExpiresAt,
+          }, { merge: true });
+        }
+      }
       await setDoc(doc(db, COLLECTIONS.SESSIONS, activeSessionId), {
         status: 'RUNNING',
-        startedAt: serverTimestamp(),
       }, { merge: true });
-      showNotification('success', 'Session started — market is live!');
+      showNotification('success', activeSession?.status === 'PAUSED' ? 'Session resumed — market is live!' : 'Session started — market is live!');
     } catch (e: any) { showNotification('error', e.message); }
     finally { setActionLoading(false); }
   };
@@ -221,15 +247,24 @@ export default function AdminPanel() {
     if (!activeSessionId) return;
     try {
       setActionLoading(true);
-      await setDoc(doc(db, COLLECTIONS.SESSIONS, activeSessionId, 'meta', SESSION_META_DOCS.ACTIVE_EVENT), {
-        isExpired: true,
-      }, { merge: true });
+      const eventRef = doc(db, COLLECTIONS.SESSIONS, activeSessionId, 'meta', SESSION_META_DOCS.ACTIVE_EVENT);
+      const eventSnap = await getDoc(eventRef);
+      const event = eventSnap.exists() ? eventSnap.data() : null;
+      const expiresAt = event?.expiresAt?.toMillis?.();
+      const remainingSeconds = expiresAt
+        ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000))
+        : null;
+      if (event && !event.isExpired) {
+        await setDoc(eventRef, {
+          isPaused: true,
+          pausedAt: serverTimestamp(),
+          pausedRemainingSeconds: remainingSeconds,
+        }, { merge: true });
+      }
       await setDoc(doc(db, COLLECTIONS.SESSIONS, activeSessionId), {
         status: 'PAUSED',
-        activeNewsEventId: null,
-        activeNewsEventExpiresAt: null,
       }, { merge: true });
-      showNotification('success', 'Session paused — news event cleared.');
+      showNotification('success', 'Session paused — all market state frozen.');
     } catch (e: any) { showNotification('error', e.message); }
     finally { setActionLoading(false); }
   };
@@ -269,6 +304,10 @@ export default function AdminPanel() {
       return;
     }
     const tick = () => {
+      if (activeSession?.status === 'PAUSED' || activeNewsEvent.isPaused) {
+        setNewsEventCountdown(Number(activeNewsEvent.pausedRemainingSeconds) || 0);
+        return;
+      }
       const expiresAt = activeNewsEvent.expiresAt?.toMillis?.();
       if (!expiresAt) return;
       const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
@@ -277,7 +316,7 @@ export default function AdminPanel() {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [activeNewsEvent]);
+  }, [activeNewsEvent, activeSession?.status]);
 
   const handleTriggerNewsEvent = async (eventId: NewsEventId) => {
     const scenario = SCENARIO_MAP[eventId];
@@ -664,8 +703,18 @@ export default function AdminPanel() {
   // Adjust User Cash (+ / -)
   const handleAdjustUserCash = async (userId: string, currentCash: number, delta: number) => {
     try {
+      if (!activeSessionId) throw new Error('No active session selected.');
       const newCash = Math.max(0, currentCash + delta);
-      await updateDoc(doc(db, 'users', userId), { currentCash: newCash });
+      await updateDoc(doc(
+        db,
+        COLLECTIONS.SESSIONS,
+        activeSessionId,
+        SESSION_SUBCOLLECTIONS.PORTFOLIOS,
+        userId
+      ), {
+        currentCash: newCash,
+        lastUpdated: serverTimestamp(),
+      });
       showNotification('success', `Adjusted cash balance by ${delta >= 0 ? '+' : ''}$${delta.toLocaleString()}`);
     } catch (e: any) {
       showNotification('error', e.message);
@@ -712,6 +761,19 @@ export default function AdminPanel() {
   const status = sessionStatus; // used in status badge
   const regime = config.marketRegime || 'NORMAL';
   const intervalSec = activeSession?.priceUpdateIntervalSeconds || config.priceUpdateIntervalSeconds || 30;
+  const inspectorUsers = currentSessionPortfolios.map((portfolio) => {
+    const profile = users.find((candidate) => candidate.id === portfolio.uid);
+    return {
+      ...profile,
+      ...portfolio,
+      id: portfolio.uid,
+      name: profile?.name || profile?.displayName || portfolio.displayName || 'Anonymous',
+      email: profile?.email || '',
+      role: profile?.role || 'participant',
+      startingBalance: portfolio.startingCash,
+      portfolioValue: portfolio.portfolioValue,
+    };
+  });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -986,7 +1048,11 @@ export default function AdminPanel() {
                       ? 'bg-rose-200 text-rose-800'
                       : 'bg-amber-200 text-amber-800'
                   }`}>
-                    {activeNewsEvent.type === 'POSITIVE' ? '↑ Positive' : activeNewsEvent.type === 'NEGATIVE' ? '↓ Negative' : '↕ Mixed'} Event Active
+                    {activeNewsEvent.type === 'POSITIVE'
+                      ? 'Positive Event Active'
+                      : activeNewsEvent.type === 'NEGATIVE'
+                      ? 'Negative Event Active'
+                      : 'Mixed Event Active'}
                   </span>
                   <span className="font-mono font-extrabold text-base tracking-widest flex items-center gap-1">
                     <Timer className="w-4 h-4 opacity-60" />
@@ -994,17 +1060,6 @@ export default function AdminPanel() {
                   </span>
                 </div>
                 <p className="font-semibold text-zinc-800 leading-snug">{activeNewsEvent.headline}</p>
-                <div className="flex flex-wrap gap-1 pt-0.5">
-                  {(activeNewsEvent.affectedStocks || []).map((s: any) => (
-                    <span key={s.ticker} className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                      s.strength.includes('UP') ? 'bg-green-100 text-green-700 border-green-200' :
-                      s.strength === 'NO_IMPACT' ? 'bg-zinc-100 text-zinc-500 border-zinc-200' :
-                      'bg-red-100 text-red-700 border-red-200'
-                    }`}>
-                      {s.ticker} {s.strength.replace(/_/g, ' ')}
-                    </span>
-                  ))}
-                </div>
                 <button
                   onClick={handleEndNewsEventEarly}
                   className="w-full py-1.5 bg-zinc-700 hover:bg-zinc-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer mt-1"
@@ -1034,9 +1089,8 @@ export default function AdminPanel() {
                   <span className="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded shrink-0">▶</span>
                 </button>
               ))}
-
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block pt-1">
-                Negative Scenarios (4)
+                Negative Scenarios (3)
               </span>
               {ALL_SCENARIOS.filter(s => s.type === 'NEGATIVE').map(scenario => (
                 <button
@@ -1047,6 +1101,20 @@ export default function AdminPanel() {
                 >
                   <span className="font-semibold text-rose-900 pr-2 leading-snug">{scenario.headline}</span>
                   <span className="text-[10px] font-bold bg-rose-200 text-rose-800 px-1.5 py-0.5 rounded shrink-0">▶</span>
+                </button>
+              ))}
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block pt-1">
+                Mixed Scenarios (1)
+              </span>
+              {ALL_SCENARIOS.filter(s => s.type === 'MIXED').map(scenario => (
+                <button
+                  key={scenario.id}
+                  disabled={isTriggeringEvent || (activeNewsEvent && !activeNewsEvent.isExpired) || !isRunning}
+                  onClick={() => handleTriggerNewsEvent(scenario.id as NewsEventId)}
+                  className="w-full text-left p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[11px] transition-colors flex items-center justify-between cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="font-semibold text-amber-900 pr-2 leading-snug">{scenario.headline}</span>
+                  <span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded shrink-0">▶</span>
                 </button>
               ))}
             </div>
@@ -1277,7 +1345,7 @@ export default function AdminPanel() {
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-zinc-900 text-sm">Participant Portfolio Inspector ({users.length})</h3>
+                  <h3 className="font-bold text-zinc-900 text-sm">Participant Portfolio Inspector ({inspectorUsers.length})</h3>
                   <p className="text-[11px] text-zinc-500">Live positions, balances, and manual account adjustments</p>
                 </div>
               </div>
@@ -1296,7 +1364,7 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {users.map(u => {
+                  {inspectorUsers.map(u => {
                     const start = Number(u.startingBalance || 100000);
                     const portVal = Number(u.portfolioValue ?? u.currentCash ?? 100000);
                     const pnl = portVal - start;

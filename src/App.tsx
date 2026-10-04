@@ -71,7 +71,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       />
 
       {/* Page Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full min-w-0 overflow-x-hidden">
         {children}
       </main>
 

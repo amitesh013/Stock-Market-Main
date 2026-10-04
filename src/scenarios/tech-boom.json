@@ -1,12 +1,12 @@
 {
   "id": "tech-boom",
-  "headline": "🚀 Tech Boom: Googl Technologies Announces Record AI Revenue",
-  "description": "Googl Technologies reports a massive surge in AI-driven cloud revenue, beating analyst expectations by 40%. The breakthrough triggers widespread optimism across the tech and retail sectors, with investors pouring capital into digital growth stocks.",
+  "headline": "Technology Sector Update",
+  "description": "Major developments drive increased activity across the technology market.",
   "type": "POSITIVE",
   "durationSeconds": 900,
   "affectedStocks": [
-    { "ticker": "GOOGL",    "strength": "STRONG_UP" },
-    { "ticker": "FLOPCART", "strength": "MODERATE_UP" },
-    { "ticker": "FPMORGAN", "strength": "SLIGHT_UP" }
+    { "ticker": "GOOGL", "strength": "STRONG_UP" },
+    { "ticker": "AMZN",  "strength": "MODERATE_UP" },
+    { "ticker": "JPM",   "strength": "SLIGHT_UP" }
   ]
 }

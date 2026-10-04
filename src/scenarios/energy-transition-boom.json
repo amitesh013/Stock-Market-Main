@@ -1,13 +1,13 @@
 {
   "id": "energy-transition-boom",
-  "headline": "⚡ Green Energy Surge: Global Treaty Mandates 60% Renewable Shift by 2030",
-  "description": "World leaders sign a landmark energy treaty requiring nations to generate 60% of electricity from renewables by 2030. LP Green Energy secures contracts worth billions overnight. Financial institutions rush to fund green infrastructure projects, while consumer brands pledge carbon neutrality commitments.",
+  "headline": "Energy Transition Update",
+  "description": "A major global policy development accelerates activity across the energy and industrial landscape.",
   "type": "POSITIVE",
   "durationSeconds": 900,
   "affectedStocks": [
-    { "ticker": "LPGREEN",  "strength": "STRONG_UP" },
-    { "ticker": "FPMORGAN", "strength": "MODERATE_UP" },
-    { "ticker": "ABIBANK",  "strength": "MODERATE_UP" },
-    { "ticker": "BADBURY",  "strength": "SLIGHT_UP" }
+    { "ticker": "ENPH", "strength": "STRONG_UP" },
+    { "ticker": "JPM",  "strength": "MODERATE_UP" },
+    { "ticker": "BAC",  "strength": "MODERATE_UP" },
+    { "ticker": "KO",   "strength": "SLIGHT_UP" }
   ]
 }

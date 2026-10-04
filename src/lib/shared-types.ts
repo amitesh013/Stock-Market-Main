@@ -41,6 +41,7 @@ export type StockId =
 export interface Stock {
   id: string;
   ticker: StockId;
+  yahooSymbol: string;
   name: string;
   sector: string;
   currentPrice: number;
@@ -51,18 +52,21 @@ export interface Stock {
   volatility: number;
   newsSensitivity: number;
   isActive: boolean;
+  source: string;
+  referencePrice: number;
+  lastYahooSync: any | null;
   lastUpdated: any;
 }
 
 export const FICTIONAL_STOCKS: Omit<Stock, 'id' | 'lastUpdated'>[] = [
-  { ticker: 'GOOGL',    name: 'Googl Technologies', sector: 'Technology',      currentPrice: 250.00, initialPrice: 250.00, dayOpenPrice: 250.00, change: 0, changePercent: 0, volatility: 0.015, newsSensitivity: 1.2, isActive: true },
-  { ticker: 'MOON',     name: 'Moon Pharma',         sector: 'Pharmaceuticals', currentPrice: 180.00, initialPrice: 180.00, dayOpenPrice: 180.00, change: 0, changePercent: 0, volatility: 0.018, newsSensitivity: 1.5, isActive: true },
-  { ticker: 'BADBURY',  name: 'Badbury Consumer',    sector: 'FMCG',            currentPrice: 120.00, initialPrice: 120.00, dayOpenPrice: 120.00, change: 0, changePercent: 0, volatility: 0.010, newsSensitivity: 0.9, isActive: true },
-  { ticker: 'FPMORGAN', name: 'FPMorgan Financial',  sector: 'Finance',         currentPrice: 200.00, initialPrice: 200.00, dayOpenPrice: 200.00, change: 0, changePercent: 0, volatility: 0.012, newsSensitivity: 1.1, isActive: true },
-  { ticker: 'ABIBANK',  name: 'ABI Bank',            sector: 'Banking',         currentPrice: 150.00, initialPrice: 150.00, dayOpenPrice: 150.00, change: 0, changePercent: 0, volatility: 0.013, newsSensitivity: 1.1, isActive: true },
-  { ticker: 'FLOPCART', name: 'Flopcart',            sector: 'E-commerce',      currentPrice: 300.00, initialPrice: 300.00, dayOpenPrice: 300.00, change: 0, changePercent: 0, volatility: 0.020, newsSensitivity: 1.3, isActive: true },
-  { ticker: 'LPGREEN',  name: 'LP Green Energy',     sector: 'Renewable Energy',currentPrice: 90.00,  initialPrice: 90.00,  dayOpenPrice: 90.00,  change: 0, changePercent: 0, volatility: 0.022, newsSensitivity: 1.4, isActive: true },
-  { ticker: 'ZXDEFENCE',name: 'ZX Defence',          sector: 'Defence',         currentPrice: 210.00, initialPrice: 210.00, dayOpenPrice: 210.00, change: 0, changePercent: 0, volatility: 0.011, newsSensitivity: 0.8, isActive: true },
+  { ticker: 'GOOGL',    yahooSymbol: 'GOOGL', name: 'Googl Technologies', sector: 'Technology',       currentPrice: 250.00, initialPrice: 250.00, dayOpenPrice: 250.00, change: 0, changePercent: 0, volatility: 0.015, newsSensitivity: 1.2, isActive: true, source: 'Yahoo Finance', referencePrice: 250.00, lastYahooSync: null },
+  { ticker: 'MOON',    yahooSymbol: 'PFE',   name: 'Moon Pharma',         sector: 'Pharmaceuticals',  currentPrice: 180.00, initialPrice: 180.00, dayOpenPrice: 180.00, change: 0, changePercent: 0, volatility: 0.018, newsSensitivity: 1.5, isActive: true, source: 'Yahoo Finance', referencePrice: 180.00, lastYahooSync: null },
+  { ticker: 'BADBURY', yahooSymbol: 'KO',    name: 'Badbury Consumer',    sector: 'FMCG',             currentPrice: 120.00, initialPrice: 120.00, dayOpenPrice: 120.00, change: 0, changePercent: 0, volatility: 0.010, newsSensitivity: 0.9, isActive: true, source: 'Yahoo Finance', referencePrice: 120.00, lastYahooSync: null },
+  { ticker: 'FPMORGAN',yahooSymbol: 'JPM',   name: 'FPMorgan Financial',  sector: 'Finance',          currentPrice: 200.00, initialPrice: 200.00, dayOpenPrice: 200.00, change: 0, changePercent: 0, volatility: 0.012, newsSensitivity: 1.1, isActive: true, source: 'Yahoo Finance', referencePrice: 200.00, lastYahooSync: null },
+  { ticker: 'ABIBANK', yahooSymbol: 'BAC',   name: 'ABI Bank',            sector: 'Banking',          currentPrice: 150.00, initialPrice: 150.00, dayOpenPrice: 150.00, change: 0, changePercent: 0, volatility: 0.013, newsSensitivity: 1.1, isActive: true, source: 'Yahoo Finance', referencePrice: 150.00, lastYahooSync: null },
+  { ticker: 'FLOPCART',yahooSymbol: 'AMZN',  name: 'Flopcart',            sector: 'E-commerce',       currentPrice: 300.00, initialPrice: 300.00, dayOpenPrice: 300.00, change: 0, changePercent: 0, volatility: 0.020, newsSensitivity: 1.3, isActive: true, source: 'Yahoo Finance', referencePrice: 300.00, lastYahooSync: null },
+  { ticker: 'LPGREEN', yahooSymbol: 'ENPH',  name: 'LP Green Energy',     sector: 'Renewable Energy', currentPrice: 90.00,  initialPrice: 90.00,  dayOpenPrice: 90.00,  change: 0, changePercent: 0, volatility: 0.022, newsSensitivity: 1.4, isActive: true, source: 'Yahoo Finance', referencePrice: 90.00, lastYahooSync: null },
+  { ticker: 'ZXDEFENCE',yahooSymbol: 'LMT',  name: 'ZX Defence',          sector: 'Defence',          currentPrice: 210.00, initialPrice: 210.00, dayOpenPrice: 210.00, change: 0, changePercent: 0, volatility: 0.011, newsSensitivity: 0.8, isActive: true, source: 'Yahoo Finance', referencePrice: 210.00, lastYahooSync: null },
 ];
 
 // ------------------------------------------------------------
@@ -73,7 +77,7 @@ export type NewsEventType = 'POSITIVE' | 'NEGATIVE' | 'MIXED';
 export type ImpactStrength = 'STRONG_UP' | 'MODERATE_UP' | 'SLIGHT_UP' | 'NO_IMPACT' | 'SLIGHT_DOWN' | 'MODERATE_DOWN' | 'SHARP_DOWN';
 
 export interface StockImpact {
-  ticker: StockId;
+  ticker: string;
   strength: ImpactStrength;
   percentPerTick: number;   // Applied each price tick while event is active e.g. 0.003
 }

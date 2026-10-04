@@ -10,6 +10,7 @@ import NewsFeed from '../components/NewsFeed';
 import StockChartModal from '../components/StockChartModal';
 import NewsEventBanner from '../components/NewsEventBanner';
 import { useSession } from '../lib/SessionContext';
+import { BarChart3, BriefcaseBusiness, Newspaper, Trophy } from 'lucide-react';
 
 interface ParticipantDashboardProps {
   onOpenStockChart?: (stock: any) => void;
@@ -35,15 +36,15 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Floor Navigation Bar */}
       <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
         <div className="flex items-center gap-1 sm:gap-2 bg-zinc-100 p-1 rounded-xl text-xs font-bold overflow-x-auto">
           {[
-            { id: 'OVERVIEW', label: '📊 Market & Trading' },
-            { id: 'PORTFOLIO', label: '💼 My Portfolio & Allocation' },
-            { id: 'NEWS', label: '📰 Catalysts & News' },
-            { id: 'LEADERBOARD', label: '🏆 Live Leaderboard' },
+            { id: 'OVERVIEW', label: 'Market & Trading', icon: BarChart3 },
+            { id: 'PORTFOLIO', label: 'My Portfolio & Allocation', icon: BriefcaseBusiness },
+            { id: 'NEWS', label: 'Catalysts & News', icon: Newspaper },
+            { id: 'LEADERBOARD', label: 'Live Leaderboard', icon: Trophy },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -54,6 +55,7 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
                   : 'text-zinc-500 hover:text-zinc-800'
               }`}
             >
+              <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
             </button>
           ))}
@@ -62,7 +64,7 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
       {/* Tab: Overview (Default) */}
       {activeTab === 'OVERVIEW' && (
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
           <NewsEventBanner sessionId={resolvedSessionId} />
           <Watchlist
             simulationStatus={simStatus}
@@ -71,16 +73,16 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
           <Portfolio onOpenChart={handleOpenStock} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[520px] min-h-0">
+            <div className="lg:col-span-1 min-h-0">
               <NewsFeed onSelectTicker={(ticker) => {
                 // If ticker clicked in news, find and open that stock
               }} />
             </div>
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 min-h-0">
               <Transactions />
             </div>
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 min-h-0">
               <Leaderboard />
             </div>
           </div>
@@ -97,11 +99,11 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
       {/* Tab: News & Catalysts */}
       {activeTab === 'NEWS' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:h-[calc(100vh-15rem)] lg:min-h-[520px] min-h-0">
+          <div className="lg:col-span-2 min-h-0 order-2 lg:order-1">
             <NewsFeed />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-3 min-h-0 order-1 lg:order-2">
             <Watchlist
               simulationStatus={simStatus}
               onOpenStockChart={handleOpenStock}
@@ -112,11 +114,11 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
       {/* Tab: Leaderboard */}
       {activeTab === 'LEADERBOARD' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-15rem)] lg:min-h-[520px] min-h-0">
+          <div className="lg:col-span-2 min-h-0">
             <Leaderboard />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 min-h-0">
             <Transactions />
           </div>
         </div>
