@@ -1,7 +1,7 @@
 {
   "id": "global-recession",
   "headline": "Global Economic Slowdown",
-  "description": "Widespread economic concerns increase uncertainty across international markets.",
+  "description": "Slowing economic activity and weaker outlooks increase caution, uncertainty, and volatility across international markets.",
   "type": "NEGATIVE",
   "durationSeconds": 900,
   "affectedStocks": [
