@@ -1,7 +1,7 @@
 # Firebase setup
 
 1. console.firebase.google.com > Add project
-2. Project settings > Your apps > Web (</>) > register app > copy the config into `firebase-applet-config.json`. Start from `firebase-applet-config.example.json`; the real file is intentionally ignored by Git.
+2. Project settings > Your apps > Web (</>) > register app > copy the config into `firebase-applet-config.json`
 3. Build > Authentication > Get started > enable Email/Password and Google
 4. Authentication > Settings > Authorized domains > make sure `localhost` (and your deployed domain) is listed
 5. Build > Firestore Database > Create database > production mode > pick a region
