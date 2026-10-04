@@ -1,0 +1,17 @@
+{
+  "id": "global-recession",
+  "headline": "📉 Global Recession: IMF Declares Worldwide Economic Contraction",
+  "description": "The International Monetary Fund officially declares a global recession, projecting a 3.5% contraction in world GDP. Stock markets go into freefall. Banks freeze lending, consumer spending collapses, and tech companies slash growth forecasts. Only ZX Defence remains stable due to increased government security spending during geopolitical tensions.",
+  "type": "NEGATIVE",
+  "durationSeconds": 900,
+  "affectedStocks": [
+    { "ticker": "ABIBANK",   "strength": "SHARP_DOWN" },
+    { "ticker": "FPMORGAN",  "strength": "SHARP_DOWN" },
+    { "ticker": "FLOPCART",  "strength": "SHARP_DOWN" },
+    { "ticker": "GOOGL",     "strength": "SHARP_DOWN" },
+    { "ticker": "BADBURY",   "strength": "MODERATE_DOWN" },
+    { "ticker": "MOON",      "strength": "MODERATE_DOWN" },
+    { "ticker": "LPGREEN",   "strength": "MODERATE_DOWN" },
+    { "ticker": "ZXDEFENCE", "strength": "NO_IMPACT" }
+  ]
+}

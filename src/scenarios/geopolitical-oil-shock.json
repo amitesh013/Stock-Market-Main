@@ -1,0 +1,17 @@
+{
+  "id": "geopolitical-oil-shock",
+  "headline": "🛢️ Oil Shock: Major Pipeline Attack Disrupts 30% of Global Supply",
+  "description": "A coordinated attack on key oil infrastructure disrupts nearly 30% of global crude supply overnight. Oil prices spike 40% in 24 hours. Defence contractors receive emergency government contracts. Green energy alternatives surge in demand. Meanwhile, consumer, retail, financial, and tech companies face higher operating costs and economic uncertainty.",
+  "type": "MIXED",
+  "durationSeconds": 900,
+  "affectedStocks": [
+    { "ticker": "ZXDEFENCE", "strength": "STRONG_UP" },
+    { "ticker": "LPGREEN",   "strength": "MODERATE_UP" },
+    { "ticker": "FLOPCART",  "strength": "MODERATE_DOWN" },
+    { "ticker": "BADBURY",   "strength": "MODERATE_DOWN" },
+    { "ticker": "FPMORGAN",  "strength": "MODERATE_DOWN" },
+    { "ticker": "ABIBANK",   "strength": "MODERATE_DOWN" },
+    { "ticker": "GOOGL",     "strength": "SLIGHT_DOWN" },
+    { "ticker": "MOON",      "strength": "NO_IMPACT" }
+  ]
+}

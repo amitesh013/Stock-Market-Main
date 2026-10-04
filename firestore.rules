@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSessionParticipant(sessionId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/sessions/$(sessionId)/portfolios/$(request.auth.uid));
+    }
+
+    function sessionIsRunning(sessionId) {
+      return get(/databases/$(database)/documents/sessions/$(sessionId)).data.status == 'RUNNING';
+    }
+
+    // ── Global user profiles ──────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Participants can update their own doc but NOT elevate their role or cash
+      allow update: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys()
+           .hasAny(['currentCash', 'portfolioValue', 'startingBalance', 'role']));
+    }
+
+    // ── Sessions ──────────────────────────────────────────────────────────────
+    match /sessions/{sessionId} {
+      // Any signed-in user can read session metadata (needed for Join flow)
+      allow read: if isSignedIn();
+      // Only admins create/update/delete session documents
+      allow create, update, delete: if isAdmin();
+
+      // ── Stocks (per session) ───────────────────────────────────────────────
+      match /stocks/{stockId} {
+        allow read: if isSignedIn();
+        // Admin writes + price-engine writes (any authenticated user — engine runs in browser)
+        allow write: if isSignedIn();
+      }
+
+      // ── Portfolios (per session, per user) ────────────────────────────────
+      match /portfolios/{uid} {
+        // Each user reads their own; admin reads all
+        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        // Created by sessionManager.joinSession (authenticated user, own doc only)
+        allow create: if isSignedIn() && request.auth.uid == uid;
+        // Updated by trade engine via runTransaction (authenticated)
+        allow update: if isSignedIn() && request.auth.uid == uid;
+        // Admin may update (cash adjustment tool)
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      // ── Holdings (per session) ────────────────────────────────────────────
+      match /holdings/{holdingId} {
+        // Holding IDs are "{uid}_{stockId}" — user reads/writes their own; admin reads all
+        allow read: if isSignedIn() &&
+          (resource.data.userId == request.auth.uid || isAdmin());
+        // trade.ts writes holdings via runTransaction
+        allow write: if isSignedIn();
+      }
+
+      // ── Transactions (per session) ────────────────────────────────────────
+      match /transactions/{txId} {
+        allow read: if isSignedIn() &&
+          (resource.data.userId == request.auth.uid || isAdmin());
+        allow create: if isSignedIn();
+        // Transactions are immutable — no update or delete
+        allow update, delete: if false;
+      }
+
+      // ── News feed (per session) ───────────────────────────────────────────
+      match /news/{newsId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+      }
+
+      // ── Price history (per session) ───────────────────────────────────────
+      match /price_history/{docId} {
+        allow read: if isSignedIn();
+        // Price engine (any authenticated user in the browser) writes history
+        allow write: if isSignedIn();
+      }
+
+      // ── Meta docs: activeEvent, heartbeat ─────────────────────────────────
+      match /meta/{metaDoc} {
+        allow read: if isSignedIn();
+        // Admin writes events; engine (any authenticated) writes heartbeat
+        allow write: if isSignedIn();
+      }
+    }
+
+    // ── Legacy top-level collections (kept so old data is readable) ──────────
+    // These are read-only now; all new writes go to sessions/{id}/...
+    match /stocks/{stockId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /holdings/{holdingId} {
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isSignedIn();
+    }
+
+    match /transactions/{txId} {
+      allow read: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /news/{newsId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /price_history/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /simulation/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /scenarios/{scenarioId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

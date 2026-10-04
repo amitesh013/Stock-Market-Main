@@ -1,0 +1,13 @@
+{
+  "id": "banking-liquidity-crisis",
+  "headline": "🏦 Banking Crisis: ABI Bank & FPMorgan Face Emergency Liquidity Shortfall",
+  "description": "Regulators reveal that ABI Bank and FPMorgan are facing a severe liquidity shortfall after a surge in loan defaults. Emergency central bank intervention is being discussed. Investor panic spreads across the financial sector, with contagion fears pulling down tech and e-commerce stocks as credit lines tighten.",
+  "type": "NEGATIVE",
+  "durationSeconds": 900,
+  "affectedStocks": [
+    { "ticker": "ABIBANK",  "strength": "SHARP_DOWN" },
+    { "ticker": "FPMORGAN", "strength": "SHARP_DOWN" },
+    { "ticker": "GOOGL",    "strength": "MODERATE_DOWN" },
+    { "ticker": "FLOPCART", "strength": "MODERATE_DOWN" }
+  ]
+}

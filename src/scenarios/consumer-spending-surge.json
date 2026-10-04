@@ -1,0 +1,13 @@
+{
+  "id": "consumer-spending-surge",
+  "headline": "🛒 Consumer Boom: Retail Sales Hit 10-Year High This Quarter",
+  "description": "Government data reveals consumer spending at its highest level in a decade, driven by rising wages and strong employment. Retail giants and e-commerce platforms report record order volumes. Banks and financial institutions also benefit from increased credit card usage and loan demand.",
+  "type": "POSITIVE",
+  "durationSeconds": 900,
+  "affectedStocks": [
+    { "ticker": "BADBURY",  "strength": "STRONG_UP" },
+    { "ticker": "FLOPCART", "strength": "STRONG_UP" },
+    { "ticker": "ABIBANK",  "strength": "MODERATE_UP" },
+    { "ticker": "FPMORGAN", "strength": "MODERATE_UP" }
+  ]
+}
