@@ -22,11 +22,28 @@ import {
   X
 } from 'lucide-react';
 import { seedDefaultStocks, syncLiveMarketPrices } from '../lib/stockData';
+import { ActiveNewsEvent, AffectedStock } from '../lib/marketState';
 import Sparkline from './Sparkline';
 
 interface WatchlistProps {
   simulationStatus: string;
+  activeEvent?: ActiveNewsEvent | null;
   onOpenStockChart: (stock: any) => void;
+}
+
+function NewsImpactChip({ impact }: { impact: AffectedStock }) {
+  const isUp = impact.direction === 'UP';
+  return (
+    <span
+      title={`Active news: ${isUp ? 'positive' : 'negative'} impact${impact.strength ? ` (${impact.strength.toLowerCase()})` : ''}`}
+      className={`inline-flex items-center gap-0.5 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-md ${
+        isUp ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+      }`}
+    >
+      {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+      News{impact.strength ? ` · ${impact.strength.toLowerCase()}` : ''}
+    </span>
+  );
 }
 
 // Currency formatter with thousand separators
@@ -40,8 +57,18 @@ function formatUSD(val: number): string {
   }).format(val);
 }
 
-export default function Watchlist({ simulationStatus, onOpenStockChart }: WatchlistProps) {
+export default function Watchlist({ simulationStatus, activeEvent, onOpenStockChart }: WatchlistProps) {
   const { userData } = useAuth();
+
+  const impactByTicker = useMemo(() => {
+    const map: Record<string, AffectedStock> = {};
+    activeEvent?.affectedStocks.forEach((s) => {
+      map[(s.ticker || '').trim().toUpperCase()] = s;
+    });
+    return map;
+  }, [activeEvent]);
+  const getImpact = (stock: any): AffectedStock | undefined =>
+    impactByTicker[(stock.ticker || '').trim().toUpperCase()];
   const [stocks, setStocks] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('ALL');
@@ -292,11 +319,18 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
 
           <span className="text-zinc-600 hidden sm:inline">•</span>
 
-          {/* Real-time Exchange Badge */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-[10px] font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            <span>NYSE / NASDAQ Feed</span>
-          </div>
+          {/* Market Mode Badge */}
+          {activeEvent ? (
+            <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-950/60 border border-amber-700/60 text-amber-300 text-[10px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse motion-reduce:animate-none" />
+              <span>News Event Active</span>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-800/80 border border-zinc-700 text-zinc-300 text-[10px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+              <span>Normal Market</span>
+            </div>
+          )}
 
           <span className="text-zinc-600 hidden sm:inline">•</span>
 
@@ -390,11 +424,11 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="bg-white border border-zinc-200 rounded-xl px-3 py-1.5 text-xs text-zinc-700 font-semibold outline-none cursor-pointer hover:bg-zinc-50 transition-colors shadow-2xs"
               >
-                <option value="GAINERS">🚀 Top Gainers</option>
-                <option value="LOSERS">🔻 Top Losers</option>
-                <option value="PRICE_HIGH">💰 Price: High to Low</option>
-                <option value="PRICE_LOW">🏷️ Price: Low to High</option>
-                <option value="ALPHA">🔤 Symbol: A to Z</option>
+                <option value="GAINERS">Top Gainers</option>
+                <option value="LOSERS">Top Losers</option>
+                <option value="PRICE_HIGH">Price: High to Low</option>
+                <option value="PRICE_LOW">Price: Low to High</option>
+                <option value="ALPHA">Symbol: A to Z</option>
               </select>
             </div>
 
@@ -487,9 +521,15 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
                     : flash === 'down'
                     ? 'bg-rose-50/80 transition-colors duration-200'
                     : 'hover:bg-zinc-50/60 transition-colors';
+                const impact = getImpact(stock);
+                const impactClass = impact
+                  ? impact.direction === 'UP'
+                    ? 'shadow-[inset_3px_0_0_0_#059669]'
+                    : 'shadow-[inset_3px_0_0_0_#e11d48]'
+                  : '';
 
                 return (
-                  <tr key={stock.id} className={`${flashClass} group`}>
+                  <tr key={stock.id} className={`${flashClass} ${impactClass} group`}>
                     {/* Symbol & Name */}
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
@@ -505,6 +545,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
                             className="font-bold text-zinc-900 group-hover:text-blue-600 transition-colors text-left flex items-center gap-1.5 cursor-pointer"
                           >
                             <span className="text-sm tracking-tight">{stock.ticker}</span>
+                            {impact && <NewsImpactChip impact={impact} />}
                           </button>
                           <div className="text-zinc-500 text-[11px] line-clamp-1 max-w-[170px]">
                             {stock.name}
@@ -613,6 +654,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
                 : flash === 'down'
                 ? 'ring-2 ring-rose-500/50 bg-rose-50/20'
                 : 'border-zinc-200/80 hover:border-zinc-300 hover:shadow-sm';
+            const impact = getImpact(stock);
 
             return (
               <div
@@ -642,9 +684,12 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
                       </div>
                     </div>
 
-                    <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200/50 shrink-0">
-                      {stock.sector || 'Equities'}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200/50">
+                        {stock.sector || 'Equities'}
+                      </span>
+                      {impact && <NewsImpactChip impact={impact} />}
+                    </div>
                   </div>
 
                   {/* Sparkline Banner */}

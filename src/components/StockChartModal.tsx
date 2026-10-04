@@ -3,6 +3,8 @@ import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthProvider';
 import { executeTrade } from '../lib/trade';
+import { useSession, useParticipantBalance } from '../lib/session';
+import { toMillis } from '../lib/marketState';
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -32,7 +34,10 @@ interface StockChartModalProps {
 }
 
 export default function StockChartModal({ stock, simulationStatus, onClose }: StockChartModalProps) {
-  const { user, userData } = useAuth();
+  const { user } = useAuth();
+  const { sessionId, config: sessionConfig } = useSession();
+  const { currentCash } = useParticipantBalance();
+  const sessionStartMs = toMillis(sessionConfig?.startedAt) || toMillis(sessionConfig?.createdAt);
   const [history, setHistory] = useState<any[]>([]);
   const [realCandles, setRealCandles] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState<'1M' | '5M' | '15M' | 'ALL'>('5M');
@@ -46,8 +51,9 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
 
   // Listen to user holding for this stock
   useEffect(() => {
-    if (!user || !stock) return;
-    const holdingRef = doc(db, 'holdings', `${user.uid}_${stock.id}`);
+    setHolding(null);
+    if (!user || !stock || !sessionId) return;
+    const holdingRef = doc(db, 'holdings', `${sessionId}_${user.uid}_${stock.id}`);
     const unsub = onSnapshot(holdingRef, (docSnap) => {
       if (docSnap.exists()) {
         const d = docSnap.data();
@@ -60,7 +66,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
       }
     });
     return unsub;
-  }, [user, stock]);
+  }, [user, stock, sessionId]);
 
   // Listen to price history for this stock
   useEffect(() => {
@@ -86,19 +92,19 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
         };
       });
 
-      items.sort((a, b) => a.timestamp - b.timestamp);
-      setHistory(items);
+      setHistory(items.filter((i) => i.timestamp >= sessionStartMs).sort((a, b) => a.timestamp - b.timestamp));
     }, (err) => {
       console.error('History fetch error:', err);
     });
 
     return unsub;
-  }, [stock]);
+  }, [stock, sessionStartMs]);
 
-  // Listen to related news
+  // Listen to related news in this session
   useEffect(() => {
-    if (!stock) return;
-    const unsub = onSnapshot(collection(db, 'news'), (snap) => {
+    setRelatedNews([]);
+    if (!stock || !sessionId) return;
+    const unsub = onSnapshot(query(collection(db, 'news'), where('sessionId', '==', sessionId)), (snap) => {
       const allNews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const filtered = allNews.filter((n: any) => n.ticker === stock.ticker || n.ticker === 'ALL');
       filtered.sort((a: any, b: any) => {
@@ -109,7 +115,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
       setRelatedNews(filtered.slice(0, 3));
     });
     return unsub;
-  }, [stock]);
+  }, [stock, sessionId]);
 
   // Fetch real market historical candles directly from exchange proxy
   useEffect(() => {
@@ -169,7 +175,6 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
   // Trading calculation variables
   const numQty = Number(quantity) || 0;
   const estimatedTotal = Math.round(numQty * currentPrice * 100) / 100;
-  const currentCash = Number(userData?.currentCash) || 0;
   const sharesOwned = holding?.quantity || 0;
   const avgCost = holding?.averageBuyPrice || 0;
   const maxAffordable = currentPrice > 0 ? Math.floor(currentCash / currentPrice) : 0;

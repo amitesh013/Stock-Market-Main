@@ -49,50 +49,49 @@ export default function TickerTape({ onSelectStock }: TickerTapeProps) {
 
   if (stocks.length === 0) return null;
 
+  const items = stocks.map((stock) => {
+    const currentP = Number(stock.currentPrice) || 0;
+    const dayOpen = Number(stock.dayOpenPrice || stock.basePrice || currentP);
+    const changePercent =
+      stock.changePercent !== undefined
+        ? Number(stock.changePercent)
+        : dayOpen > 0
+        ? Math.round(((currentP - dayOpen) / dayOpen) * 10000) / 100
+        : 0;
+    return { stock, currentP, changePercent, isUp: changePercent >= 0 };
+  });
+
+  const renderItems = (copy: number) =>
+    items.map(({ stock, currentP, changePercent, isUp }) => (
+      <button
+        key={`${copy}-${stock.id}`}
+        onClick={() => onSelectStock(stock)}
+        tabIndex={copy === 0 ? 0 : -1}
+        aria-hidden={copy === 0 ? undefined : true}
+        className="flex items-center gap-2 px-3 h-full hover:bg-[#162129] transition-colors group cursor-pointer"
+      >
+        <span className="font-bold text-[#F3F5F4] group-hover:text-[#3B82FF] transition-colors tracking-tight">{stock.ticker}</span>
+        <span className="text-[#A4AFB4] tabular-nums">{formatUSD(currentP)}</span>
+        <span className="flex items-center text-[11px] font-semibold tabular-nums" style={{ color: isUp ? '#39FF88' : '#FF4D5A' }}>
+          {isUp ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
+          {isUp ? '+' : ''}
+          {changePercent.toFixed(2)}%
+        </span>
+        <span className="ml-1 w-px h-3 bg-[#26343C]" aria-hidden="true" />
+      </button>
+    ));
+
   return (
-    <div className="bg-zinc-950 text-white border-b border-zinc-850 py-1.5 px-4 shadow-inner overflow-hidden select-none">
-      <div className="max-w-7xl mx-auto flex items-center gap-3">
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0">
-          <Radio className="w-3 h-3 text-blue-400 animate-pulse" />
-          <span>Live Ticker</span>
-        </div>
-
-        <div className="flex items-center gap-5 overflow-x-auto no-scrollbar py-0.5 text-xs whitespace-nowrap">
-          {stocks.map((stock) => {
-            const currentP = Number(stock.currentPrice) || 0;
-            const dayOpen = Number(stock.dayOpenPrice || stock.basePrice || currentP);
-            const changePercent =
-              stock.changePercent !== undefined
-                ? Number(stock.changePercent)
-                : dayOpen > 0
-                ? Math.round(((currentP - dayOpen) / dayOpen) * 10000) / 100
-                : 0;
-            const isUp = changePercent >= 0;
-
-            return (
-              <button
-                key={stock.id}
-                onClick={() => onSelectStock(stock)}
-                className="flex items-center gap-2 hover:bg-zinc-800/80 px-2 py-1 rounded-lg transition-colors group cursor-pointer"
-              >
-                <span className="font-extrabold text-zinc-200 group-hover:text-blue-400 transition-colors tracking-tight">
-                  {stock.ticker}
-                </span>
-                <span className="font-mono text-zinc-100 font-medium tabular-nums">
-                  {formatUSD(currentP)}
-                </span>
-                <span
-                  className={`flex items-center text-[11px] font-bold font-mono ${
-                    isUp ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                >
-                  {isUp ? <TrendingUp className="w-3 h-3 mr-0.5" /> : <TrendingDown className="w-3 h-3 mr-0.5" />}
-                  {isUp ? '+' : ''}
-                  {changePercent.toFixed(2)}%
-                </span>
-              </button>
-            );
-          })}
+    <div className="fixed bottom-0 inset-x-0 z-30 h-8 bg-[#06090B]/95 backdrop-blur border-t border-[#26343C] select-none flex items-stretch text-xs">
+      <div aria-hidden="true" className="hdr-line absolute left-0 right-0 -top-px h-px" />
+      <div className="flex items-center gap-1.5 px-3 shrink-0 border-r border-[#26343C] text-[10px] font-bold uppercase tracking-[0.14em] text-[#00D9FF]">
+        <Radio className="w-3 h-3 animate-pulse" />
+        <span className="hidden sm:inline">Live Ticker</span>
+      </div>
+      <div className="ticker-viewport relative flex-1 min-w-0 overflow-hidden">
+        <div className="ticker-track flex items-stretch h-full w-max whitespace-nowrap">
+          {renderItems(0)}
+          {renderItems(1)}
         </div>
       </div>
     </div>

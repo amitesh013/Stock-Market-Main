@@ -1,1 +1,244 @@
 @import "tailwindcss";
+
+/* Leaderboard: market race */
+
+/* Mobile: Rank | Participant | Portfolio | Race */
+.lb-grid {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto minmax(6rem, 38%);
+  column-gap: 0.5rem;
+}
+
+/* Tablet: Rank | Participant | Portfolio | Return | Race */
+@container (min-width: 36rem) {
+  .lb-grid {
+    grid-template-columns: 2rem minmax(0, 1.2fr) 6.5rem 4rem minmax(9rem, 1.5fr);
+    column-gap: 0.75rem;
+  }
+}
+
+/* Desktop: Rank | Participant | Portfolio | P&L | Return | Race */
+@container (min-width: 48rem) {
+  .lb-grid {
+    grid-template-columns: 2rem minmax(0, 1.25fr) 6.75rem 6.25rem 4.25rem minmax(11rem, 1.9fr);
+  }
+}
+
+.lb-row {
+  border-color: var(--lb-border);
+  transition: border-color 200ms ease, background-color 300ms ease;
+}
+.lb-row:hover {
+  border-color: var(--lb-border-hover);
+}
+
+.lb-track .lb-line {
+  stroke-opacity: 0.4;
+  transition: stroke-opacity 200ms ease;
+}
+.lb-track .lb-candles {
+  opacity: 0.28;
+  transition: opacity 200ms ease;
+}
+.lb-row:hover .lb-track .lb-line {
+  stroke-opacity: 0.6;
+}
+.lb-row:hover .lb-track .lb-candles {
+  opacity: 0.45;
+}
+
+.lb-runner-wrap {
+  opacity: 0.88;
+  transition: opacity 200ms ease;
+}
+.lb-row:hover .lb-runner-wrap {
+  opacity: 1;
+}
+
+.lb-value {
+  transition: background-color 200ms ease;
+}
+.lb-row:hover .lb-value {
+  background-color: rgba(242, 238, 230, 0.06);
+}
+
+.lb-input::placeholder {
+  color: #6f7774;
+}
+.lb-input:focus {
+  border-color: #7894a8;
+}
+
+.lb-rank-in {
+  animation: lb-rank-in 300ms ease-out;
+}
+@keyframes lb-rank-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lb-runner .lb-limb {
+  transform-box: view-box;
+}
+.lb-runner .lb-leg-a,
+.lb-runner .lb-leg-b {
+  transform-origin: 10.6px 13.4px;
+}
+.lb-runner .lb-arm-a,
+.lb-runner .lb-arm-b {
+  transform-origin: 12.6px 8.6px;
+}
+.lb-runner .lb-leg-a { transform: rotate(-8deg); }
+.lb-runner .lb-leg-b { transform: rotate(6deg); }
+
+.lb-runner-body {
+  animation: lb-bob 2.8s ease-in-out infinite;
+}
+.lb-runner.is-moving .lb-runner-body {
+  animation-duration: 0.5s;
+}
+.lb-runner.is-moving .lb-leg-a,
+.lb-runner.is-moving .lb-arm-b {
+  animation: lb-swing 0.5s ease-in-out infinite alternate;
+}
+.lb-runner.is-moving .lb-leg-b,
+.lb-runner.is-moving .lb-arm-a {
+  animation: lb-swing 0.5s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes lb-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.6px); }
+}
+@keyframes lb-swing {
+  from { transform: rotate(-14deg); }
+  to { transform: rotate(14deg); }
+}
+
+.mk-fade {
+  animation: mk-fade 220ms ease-out;
+}
+@keyframes mk-fade {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* News events: staggered reveal when an event activates */
+.ne-reveal {
+  animation: none;
+}
+@keyframes ne-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.ne-bar {
+  transition: width 700ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.ne-live-dot {
+  animation: ne-breathe 2.8s ease-in-out infinite;
+}
+@keyframes ne-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Transactions: live ledger row entry (height expands so rows below shift smoothly) */
+.tx-enter {
+  display: grid;
+  animation: tx-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.tx-enter > .tx-clip {
+  overflow: hidden;
+}
+@keyframes tx-enter {
+  from { grid-template-rows: 0fr; opacity: 0; transform: translateY(-6px); }
+  to { grid-template-rows: 1fr; opacity: 1; transform: none; }
+}
+.tx-trace {
+  transform-origin: top;
+  animation: tx-trace 500ms ease-out both;
+}
+@keyframes tx-trace {
+  0% { transform: scaleY(0); opacity: 0.9; }
+  60% { transform: scaleY(1); opacity: 0.9; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+.tx-marker-in {
+  animation: tx-marker 200ms ease-out 260ms both;
+}
+@keyframes tx-marker {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+.tx-sheet {
+  animation: mk-fade 220ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tx-trace { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-enter,
+  .tx-trace,
+  .tx-marker-in,
+  .tx-sheet,
+  .ne-reveal,
+  .ne-bar,
+  .ne-live-dot,
+  .mk-fade,
+  .lb-anim,
+  .lb-row,
+  .lb-rank-in,
+  .lb-runner-body,
+  .lb-runner .lb-limb {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Page-level atmospheric backgrounds (PageBackdrop) */
+.page-bg { opacity: calc(var(--bg-o) * 0.75); }
+@media (min-width: 768px) { .page-bg { opacity: calc(var(--bg-o) * 0.9); } }
+@media (min-width: 1280px) { .page-bg { opacity: var(--bg-o); } }
+.page-bg-img { filter: saturate(1.15); }
+@keyframes page-bg-in {
+  from { opacity: 0; transform: scale(1.04) translateX(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-bg { transition: none; }
+  .page-bg-img { animation: none; }
+}
+
+/* Price tick pulse: green up, red down */
+.tick-up { color: #39FF88; animation: tick-up 700ms ease-out; }
+.tick-down { color: #FF4D5A; animation: tick-down 700ms ease-out; }
+@keyframes tick-up { 0% { background-color: rgba(57,255,136,0.18); box-shadow: 0 0 10px rgba(57,255,136,0.35); } 100% { background-color: transparent; box-shadow: none; } }
+@keyframes tick-down { 0% { background-color: rgba(255,77,90,0.18); box-shadow: 0 0 10px rgba(255,77,90,0.35); } 100% { background-color: transparent; box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .tick-up, .tick-down { animation: none; } }
+
+/* Live dot ping ring (color via currentColor) */
+.live-ping::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; border: 1px solid currentColor; animation: live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes live-ping { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(3.2); opacity: 0; } }
+
+/* Header accent line: blue -> cyan -> neon red, slowly travelling */
+.hdr-line { background: linear-gradient(90deg, transparent, #3B82FF, #00D9FF, #FF4D5A, transparent); background-size: 200% 100%; opacity: 0.7; animation: hdr-line 8s linear infinite; }
+@keyframes hdr-line { from { background-position: 200% 0; } to { background-position: 0% 0; } }
+
+/* Cards: rise in, glow on hover */
+.card-glow { transition: border-color 250ms ease, box-shadow 250ms ease; }
+.card-glow:hover { border-color: rgba(0,217,255,0.35); box-shadow: 0 0 0 1px rgba(0,217,255,0.08), 0 0 22px rgba(0,217,255,0.08); }
+@keyframes card-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hdr-line, .card-glow, .live-ping::after { animation: none; }
+}
+
+/* Bottom live ticker: seamless marquee (track holds two copies), pauses on hover/focus */
+.ticker-track { animation: ticker-scroll 45s linear infinite; }
+.ticker-viewport:hover .ticker-track, .ticker-viewport:focus-within .ticker-track { animation-play-state: paused; }
+@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .ticker-viewport { overflow-x: auto; scrollbar-width: none; }
+}

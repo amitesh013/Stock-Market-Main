@@ -143,7 +143,8 @@ app.get('/api/stocks/chart/:symbol', async (req, res) => {
   let interval = '5m';
   if (range === '1d') interval = '2m';
   else if (range === '5d') interval = '15m';
-  else if (range === '1mo') interval = '1d';
+  else if (range === '1mo' || range === '3mo') interval = '1d';
+  else if (range === '1y') interval = '1wk';
 
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(rawSymbol)}?interval=${interval}&range=${range}`;

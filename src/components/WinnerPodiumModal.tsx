@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthProvider';
+import { useSession } from '../lib/session';
 import { Trophy, Award, TrendingUp, CheckCircle, Download, X } from 'lucide-react';
 
 interface WinnerPodiumModalProps {
@@ -10,10 +11,13 @@ interface WinnerPodiumModalProps {
 
 export default function WinnerPodiumModal({ onClose }: WinnerPodiumModalProps) {
   const { user } = useAuth();
+  const { sessionId } = useSession();
   const [rankedUsers, setRankedUsers] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+    setRankedUsers([]);
+    if (!sessionId) return;
+    const unsub = onSnapshot(collection(db, 'sessions', sessionId, 'participants'), (snap) => {
       const list = snap.docs.map(d => {
         const val = d.data();
         const start = Number(val.startingBalance || 100000);
@@ -35,7 +39,7 @@ export default function WinnerPodiumModal({ onClose }: WinnerPodiumModalProps) {
     });
 
     return unsub;
-  }, []);
+  }, [sessionId]);
 
   const firstPlace = rankedUsers[0];
   const secondPlace = rankedUsers[1];

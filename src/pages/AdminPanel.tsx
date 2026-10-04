@@ -13,6 +13,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import SessionsManager from '../components/admin/SessionsManager';
 import { 
   Play, 
   Pause, 
@@ -71,6 +72,7 @@ export default function AdminPanel() {
   const [newsTicker, setNewsTicker] = useState('ALL');
   const [newsSentiment, setNewsSentiment] = useState<'BULLISH' | 'BEARISH'>('BULLISH');
   const [newsImpact, setNewsImpact] = useState('0.03');
+  const [targetSession, setTargetSession] = useState<{ id: string; code: string } | null>(null);
 
   // Edit stock modal
   const [editingStock, setEditingStock] = useState<any | null>(null);
@@ -164,6 +166,10 @@ export default function AdminPanel() {
     const scenario = SCENARIO_MAP[eventId];
     if (!scenario) return;
 
+    if (!targetSession) {
+      showNotification('error', 'Select a session above before triggering an event.');
+      return;
+    }
     if (activeNewsEvent && !activeNewsEvent.isExpired) {
       showNotification('error', 'A news event is already active. End it first before triggering another.');
       return;
@@ -192,7 +198,23 @@ export default function AdminPanel() {
         activeNewsEventExpiresAt: Timestamp.fromDate(expiresAt),
       }, { merge: true });
 
+      // Participants read the active event from their session document.
+      await updateDoc(doc(db, 'sessions', targetSession.id), {
+        activeNewsEvent: {
+          eventId: scenario.id,
+          headline: scenario.headline,
+          description: scenario.description,
+          sentiment: scenario.type === 'NEGATIVE' ? 'NEGATIVE' : 'POSITIVE',
+          affectedStocks: scenario.affectedStocks
+            .filter((s: any) => s.strength !== 'NO_IMPACT')
+            .map((s: any) => ({ ticker: s.ticker, direction: String(s.strength).includes('UP') ? 'UP' : 'DOWN' })),
+          triggeredAt: serverTimestamp(),
+          expiresAt: Timestamp.fromDate(expiresAt),
+        },
+      });
+
       await addDoc(collection(db, COLLECTIONS.NEWS), {
+        sessionId: targetSession.id,
         headline: scenario.headline,
         summary: scenario.description,
         ticker: 'ALL',
@@ -219,6 +241,7 @@ export default function AdminPanel() {
         activeNewsEventId: null,
         activeNewsEventExpiresAt: null,
       }, { merge: true });
+      if (targetSession) await updateDoc(doc(db, 'sessions', targetSession.id), { activeNewsEvent: null });
       showNotification('success', 'News event ended early — normal market resumed.');
     } catch (e: any) {
       showNotification('error', e.message);
@@ -369,10 +392,12 @@ export default function AdminPanel() {
   const handleBroadcastNews = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newsHeadline.trim()) return;
+    if (!targetSession) { showNotification('error', 'Select a session above before publishing news.'); return; }
     setLoading(true);
     try {
       const imp = parseFloat(newsImpact) || 0.03;
       await addDoc(collection(db, 'news'), {
+        sessionId: targetSession.id,
         headline: newsHeadline.trim(),
         summary: newsSummary.trim() || newsHeadline.trim(),
         ticker: newsTicker,
@@ -393,9 +418,11 @@ export default function AdminPanel() {
 
   // 1-Click Quick Catalysts
   const handleQuickCatalyst = async (preset: { headline: string; summary: string; ticker: string; sentiment: string; impact: number }) => {
+    if (!targetSession) { showNotification('error', 'Select a session above before publishing news.'); return; }
     try {
       await addDoc(collection(db, 'news'), {
         ...preset,
+        sessionId: targetSession.id,
         timestamp: serverTimestamp(),
       });
       showNotification('success', `Catalyst deployed: "${preset.headline.slice(0, 30)}..."`);
@@ -571,6 +598,12 @@ export default function AdminPanel() {
         </div>
       )}
 
+      <SessionsManager
+        selectedId={targetSession?.id ?? null}
+        onSelect={(id, code) => setTargetSession(id ? { id, code: code || '' } : null)}
+        notify={showNotification}
+      />
+
       {/* Primary Market Controller Banner */}
       <div className="bg-white p-6 rounded-3xl shadow-sm border border-zinc-200 space-y-6">
         <div className="flex flex-wrap gap-4 justify-between items-center pb-5 border-b border-zinc-100">
@@ -735,7 +768,11 @@ export default function AdminPanel() {
                 </div>
                 <div>
                   <h3 className="font-bold text-zinc-900 text-sm">News Event Trigger</h3>
-                  <p className="text-[11px] text-zinc-500">Fire a 15-min scenario — affects prices globally</p>
+                  <p className="text-[11px] text-zinc-500">
+                    {targetSession
+                      ? <>Fire a 15-min scenario in session <span className="font-mono font-bold text-zinc-800">{targetSession.code}</span></>
+                      : 'Select a session above to trigger events'}
+                  </p>
                 </div>
               </div>
             </div>

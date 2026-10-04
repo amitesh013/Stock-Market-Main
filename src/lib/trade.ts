@@ -1,21 +1,24 @@
-import { doc, runTransaction, serverTimestamp, collection, getDoc } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp, collection } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { COLLECTIONS, SIMULATION_DOCS } from './shared-types';
+import { COLLECTIONS } from './shared-types';
+import { getCurrentSessionId } from './session';
 
 export async function executeTrade(stockId: string, type: 'BUY' | 'SELL', quantity: number) {
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const uid = user.uid;
+  const sessionId = getCurrentSessionId();
+  if (!sessionId) throw new Error('Join a session before trading.');
 
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error('Quantity must be a positive whole number');
   }
 
   return await runTransaction(db, async (transaction) => {
-    // 1. Check simulation status
-    const simRef = doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.CONFIG);
+    // 1. Check session status
+    const simRef = doc(db, 'sessions', sessionId);
     const simDoc = await transaction.get(simRef);
-    if (!simDoc.exists()) throw new Error('Simulation configuration not found');
+    if (!simDoc.exists()) throw new Error('Session not found');
 
     const simData = simDoc.data();
     if (simData.status === 'NOT_STARTED') {
@@ -46,14 +49,14 @@ export async function executeTrade(stockId: string, type: 'BUY' | 'SELL', quanti
     if (!stockPrice || stockPrice <= 0) throw new Error('Invalid stock market price');
     const totalCost = Math.round(stockPrice * quantity * 100) / 100;
 
-    // 3. Get user
-    const userRef = doc(db, COLLECTIONS.USERS, uid);
+    // 3. Get this session's cash
+    const userRef = doc(db, 'sessions', sessionId, 'participants', uid);
     const userDoc = await transaction.get(userRef);
-    if (!userDoc.exists()) throw new Error('User account not found');
+    if (!userDoc.exists()) throw new Error('You are not a participant in this session');
     const currentCash = Number(userDoc.data().currentCash);
 
-    // 4. Get holding
-    const holdingId = `${uid}_${stockId}`;
+    // 4. Get this session's holding
+    const holdingId = `${sessionId}_${uid}_${stockId}`;
     const holdingRef = doc(db, COLLECTIONS.HOLDINGS, holdingId);
     const holdingDoc = await transaction.get(holdingRef);
 
@@ -97,6 +100,7 @@ export async function executeTrade(stockId: string, type: 'BUY' | 'SELL', quanti
       transaction.delete(holdingRef);
     } else {
       transaction.set(holdingRef, {
+        sessionId,
         userId: uid,
         stockId,
         ticker: stockData.ticker || '',
@@ -109,6 +113,7 @@ export async function executeTrade(stockId: string, type: 'BUY' | 'SELL', quanti
     // Record transaction — includes activeNewsEventId for audit trail
     const txRef = doc(collection(db, COLLECTIONS.TRANSACTIONS));
     transaction.set(txRef, {
+      sessionId,
       userId: uid,
       stockId,
       ticker: stockData.ticker || '',

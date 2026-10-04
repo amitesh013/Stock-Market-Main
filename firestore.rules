@@ -20,6 +20,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/simulation/config).data.status == 'RUNNING';
     }
 
+    // Member of a competition session (has a participant doc in it)
+    function isMember(sessionId) {
+      return isSignedIn() && sessionId is string &&
+        exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
+    }
+
     // Users — read own profile, admin reads all
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -38,24 +44,48 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Holdings — users read/write their own via runTransaction in trade.ts
+    // Competition sessions — participants only see data of sessions they joined
+    match /sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+
+      match /participants/{uid} {
+        allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid) || isMember(sessionId);
+        allow create: if isSignedIn() && request.auth.uid == uid &&
+          request.resource.data.userId == uid &&
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.status != 'COMPLETED' &&
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.get('acceptingParticipants', true) != false &&
+          request.resource.data.currentCash == get(/databases/$(database)/documents/sessions/$(sessionId)).data.startingBalance &&
+          request.resource.data.startingBalance == get(/databases/$(database)/documents/sessions/$(sessionId)).data.startingBalance;
+        allow update: if isAdmin() || (
+          isSignedIn() && request.auth.uid == uid &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.startingBalance == resource.data.startingBalance
+        );
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Holdings — users read/write their own via runTransaction in trade.ts; session members can read
     match /holdings/{holdingId} {
       allow read: if isSignedIn() &&
-        (resource.data.userId == request.auth.uid || isAdmin());
+        (resource.data.userId == request.auth.uid || isAdmin() ||
+         isMember(resource.data.get('sessionId', null)));
       allow write: if isSignedIn();
     }
 
-    // Transactions — users create their own, read their own, admin reads all
+    // Transactions — users create their own, read their own, admin reads all; session members can read
     match /transactions/{txId} {
       allow read: if isSignedIn() &&
-        (resource.data.userId == request.auth.uid || isAdmin());
+        (resource.data.userId == request.auth.uid || isAdmin() ||
+         isMember(resource.data.get('sessionId', null)));
       allow create: if isSignedIn();
       allow update, delete: if false; // Transactions are immutable
     }
 
-    // News — everyone reads, admin writes
+    // News — scoped to a session; admin writes
     match /news/{newsId} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin() || isMember(resource.data.get('sessionId', null));
       allow write: if isAdmin();
     }
 
