@@ -61,7 +61,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       {/* Price tick engine — reads/writes session subcollections */}
       <SimulationEngine />
 
-      {/* Ticker Tape */}
+      {/* Stock prices */}
       <TickerTape onSelectStock={(stock) => setSelectedStockForChart(stock)} />
 
       {/* Main Header */}

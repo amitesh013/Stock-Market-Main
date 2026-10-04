@@ -47,10 +47,10 @@ export default function SimulationHeader({ simulationConfig, onOpenPodium }: Sim
               </div>
               <div>
                 <span className="text-base font-extrabold text-zinc-900 tracking-tight block leading-none">
-                  Stotra<span className="text-blue-600">Sim</span>
+                  FinQuest
                 </span>
                 <span className="text-[10px] text-zinc-400 font-semibold tracking-wider uppercase">
-                  Live Trading Floor
+                  Stock Market Simulator
                 </span>
               </div>
             </Link>

@@ -72,24 +72,6 @@ export default function NewsEventBanner({ sessionId }: Props) {
       <p className="text-xs font-bold text-zinc-900 leading-snug">{activeEvent.headline}</p>
       <p className="text-[11px] text-zinc-600 leading-snug">{activeEvent.description}</p>
 
-      {/* Participant view: show which companies are mentioned but NOT the direction */}
-      <div className="flex flex-wrap gap-1 pt-0.5">
-        {(activeEvent.affectedStocks || [])
-          .filter((s: any) => s.strength !== 'NO_IMPACT')
-          .map((s: any) => (
-            <span
-              key={s.ticker}
-              className="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-zinc-100 text-zinc-700 border-zinc-200"
-            >
-              {s.ticker}
-            </span>
-          ))}
-        {(activeEvent.affectedStocks || []).filter((s: any) => s.strength !== 'NO_IMPACT').length > 0 && (
-          <span className="px-1.5 py-0.5 text-[10px] text-zinc-400 italic">
-            mentioned in this event
-          </span>
-        )}
-      </div>
     </div>
   );
 }
