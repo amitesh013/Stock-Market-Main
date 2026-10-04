@@ -5,10 +5,11 @@ import { useAuth } from '../components/AuthProvider';
 import { getSessionByCode, joinSession } from '../lib/sessionManager';
 import { db } from '../firebase';
 import { COLLECTIONS } from '../lib/shared-types';
-import { TrendingUp, Hash, ArrowRight, AlertCircle } from 'lucide-react';
+import { Activity, ArrowRight, LogOut } from 'lucide-react';
+import joinBg from '../assets/bg/dashboard-bg.jpg';
 
 export default function JoinSession() {
-  const { user, userData } = useAuth();
+  const { user, userData, signOut } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,7 @@ export default function JoinSession() {
           }, { merge: true });
           return;
         }
-        navigate(`/session/${userData.currentSessionId}`, { replace: true });
+        navigate('/', { replace: true });
       }
     );
   }, [navigate, user, userData?.currentSessionId, userData?.role]);
@@ -48,7 +49,7 @@ export default function JoinSession() {
         return;
       }
       await joinSession(session.id, user.uid, user.displayName || user.email?.split('@')[0] || 'Player', session.startingCash);
-      navigate(`/session/${session.id}`);
+      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Failed to join session');
     } finally {
@@ -57,56 +58,83 @@ export default function JoinSession() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto">
-            <TrendingUp className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-zinc-900">Join FinQuest</h1>
-          <p className="text-sm text-zinc-500">Enter the session code from your event admin</p>
-        </div>
+    <div className="relative min-h-screen bg-[#06090B] text-[#F3F5F4] font-sans flex flex-col overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0">
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: `url(${joinBg})`, backgroundSize: 'cover', backgroundPosition: '65% 45%' }} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_45%,rgba(6,9,11,0.55)_0%,rgba(6,9,11,0.92)_100%)]" />
+      </div>
 
-        <form onSubmit={handleJoin} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-6 space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Hash className="w-3.5 h-3.5" /> Session Code
+      <header className="relative z-[1] flex items-center justify-between px-4 sm:px-8 h-14 border-b border-[#26343C] bg-[#06090B]/80 backdrop-blur">
+        <div className="flex items-center gap-2.5">
+          <Activity className="w-6 h-6 text-[#3B82FF]" strokeWidth={1.75} />
+          <span className="text-[15px] font-semibold tracking-tight">FinQuest</span>
+        </div>
+        <div className="flex items-center gap-3 text-[12px] text-[#A4AFB4]">
+          <span className="hidden sm:inline truncate max-w-[200px]">{userData?.name || 'Trader'}</span>
+          <button
+            onClick={() => signOut()}
+            aria-label="Sign out"
+            title="Sign out"
+            className="w-8 h-8 flex items-center justify-center text-[#65737A] hover:text-[#F3F5F4] hover:bg-[#111A20] rounded-lg transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      <main className="relative z-[1] flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#3B82FF] text-center">Join FinQuest</div>
+          <h1 className="mt-3 text-center text-3xl sm:text-4xl font-semibold tracking-tight">Enter Session Code</h1>
+          <p className="mt-3 text-center text-sm text-[#A4AFB4]">Enter the session code from your event admin.</p>
+
+          <form onSubmit={handleJoin} className="mt-8 rounded-md border border-[#26343C] bg-[#0D1419]/90 backdrop-blur p-6">
+            <label htmlFor="session-code" className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#65737A]">
+              Session code
             </label>
             <input
+              id="session-code"
               type="text"
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="e.g. FQ2024"
+              onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(''); }}
+              autoFocus
+              autoComplete="off"
+              spellCheck={false}
               maxLength={8}
               required
-              className="w-full px-3 py-2.5 border border-zinc-200 rounded-xl text-sm font-mono font-bold text-center tracking-widest text-zinc-900 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+              placeholder="e.g. FQ2024"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'join-error' : undefined}
+              className={`mt-2 w-full h-14 rounded-md bg-[#06090B] border px-4 text-center text-2xl font-semibold tracking-[0.2em] tabular-nums uppercase placeholder:text-[#34444D] placeholder:tracking-[0.1em] placeholder:text-lg focus:outline-none focus:ring-2 transition-colors ${
+                error ? 'border-[#FF4D5A]/60 focus:ring-[#FF4D5A]/30' : 'border-[#34444D] focus:border-[#3B82FF] focus:ring-[#3B82FF]/30'
+              }`}
             />
-          </div>
 
-          {error && (
-            <div className="flex items-center gap-2 text-rose-600 text-xs font-semibold bg-rose-50 p-2.5 rounded-xl border border-rose-200">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || code.length < 4}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            {loading ? 'Joining...' : (
-              <><ArrowRight className="w-4 h-4" /> Join Session</>
+            {error && (
+              <div id="join-error" role="alert" className="mt-4 rounded-md border border-[#FF4D5A]/40 bg-[#FF4D5A]/10 px-4 py-3 text-[13px] text-[#F3F5F4]/85">
+                {error}
+              </div>
             )}
-          </button>
-        </form>
 
-        {userData?.role === 'admin' && (
-          <p className="text-center text-xs text-zinc-400">
-            Admin? <button onClick={() => navigate('/admin')} className="text-blue-600 font-semibold hover:underline cursor-pointer">Go to Admin Panel</button>
-          </p>
-        )}
-      </div>
+            <button
+              type="submit"
+              disabled={loading || code.length < 4}
+              className="mt-5 w-full h-12 rounded-md bg-[#3B82FF] hover:bg-[#2563EB] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold uppercase tracking-[0.16em] inline-flex items-center justify-center gap-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82FF]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D1419]"
+            >
+              {loading ? 'Joining…' : <>Join Session <ArrowRight className="w-4 h-4" /></>}
+            </button>
+          </form>
+
+          {userData?.role === 'admin' && (
+            <p className="mt-5 text-center text-[13px] text-[#A4AFB4]">
+              Admin?{' '}
+              <button onClick={() => navigate('/admin')} className="text-[#3B82FF] font-semibold hover:underline cursor-pointer">
+                Go to Admin Panel
+              </button>
+            </p>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
