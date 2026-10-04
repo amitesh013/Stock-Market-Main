@@ -1,41 +1,54 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  collection, doc, onSnapshot, getDocs,
-  updateDoc, setDoc, getDoc, serverTimestamp, query, where,
-  writeBatch
-} from 'firebase/firestore';
+import { collection, doc, onSnapshot, getDocs, updateDoc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthProvider';
-import { COLLECTIONS, SIMULATION_DOCS } from '../lib/shared-types';
+import { purgeAllCrypto, seedDefaultStocks, syncLiveMarketPrices, createSessionMarket } from '../lib/stockData';
 
-export default function SimulationEngine() {
+// M2: optional sessionId. Without it the engine runs on the global collections exactly as before.
+export default function SimulationEngine({ sessionId }: { sessionId?: string } = {}) {
   const { user } = useAuth();
+  const simDoc = (name: string) =>
+    sessionId ? doc(db, 'sessions', sessionId, 'simulation', name) : doc(db, 'simulation', name);
   const engineRef = useRef<any>(null);
   const isUpdatingRef = useRef(false);
   const configRef = useRef<any>(null);
-  const initializedRef = useRef(false);
+  const initializedCryptoPurge = useRef(false);
 
-  // 1. One-time startup — only seed stocks if needed
+  // 1. One-time startup crypto purge & ensure authentic floor stocks exist
   useEffect(() => {
-    if (!user || initializedRef.current) return;
-    initializedRef.current = true;
+    if (!user || initializedCryptoPurge.current) return;
+    initializedCryptoPurge.current = true;
 
     async function ensureMarketReady() {
       try {
-        const stocksSnap = await getDocs(collection(db, COLLECTIONS.STOCKS));
+        if (sessionId) {
+          // Session mode: this session gets its own market; nothing global is touched.
+          await createSessionMarket(sessionId);
+          return;
+        }
+        await purgeAllCrypto();
+        const stocksSnap = await getDocs(collection(db, 'stocks'));
         if (stocksSnap.empty) {
-          console.log('No stocks found. Please seed stocks from Admin Panel.');
+          console.log('Seeding authentic equities and fetching initial real-time market quotes...');
+          await seedDefaultStocks();
         }
 
-        // Only set config if it doesn't exist yet
-        const configDoc = await getDoc(doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.CONFIG));
-        if (!configDoc.exists()) {
-          await setDoc(doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.CONFIG), {
-            status: 'NOT_STARTED',
-            priceUpdateIntervalSeconds: 5,
+        // Trigger immediate live quote synchronization from real exchanges
+        await syncLiveMarketPrices(sessionId).catch(err => console.warn('Initial live sync notice:', err.message));
+
+        // Ensure config document is set up for Real-Time Exchange Mode
+        const configDoc = await getDoc(simDoc('config'));
+        if (!configDoc.exists() || !configDoc.data()?.status || configDoc.data()?.status === 'NOT_STARTED') {
+          await setDoc(simDoc('config'), {
+            status: 'RUNNING',
+            isRealMarketFeed: true,
+            feedStatus: 'LIVE_EXCHANGE_CONNECTED',
+            marketSource: 'NYSE / NASDAQ Direct Feed',
+            priceUpdateIntervalSeconds: 10,
             startingBalanceAmount: 100000,
-            activeNewsEventId: null,
-          });
+            startedAt: serverTimestamp(),
+            lastLiveSync: serverTimestamp(),
+          }, { merge: true });
         }
       } catch (err) {
         console.error('Market initialization error:', err);
@@ -43,9 +56,9 @@ export default function SimulationEngine() {
     }
 
     ensureMarketReady();
-  }, [user]);
+  }, [user, sessionId]);
 
-  // 2. Price tick loop — ONLY runs when simulation is RUNNING
+  // 2. Active Real-Time Market Feed Sync Loop
   useEffect(() => {
     if (!user) {
       if (engineRef.current) clearInterval(engineRef.current);
@@ -53,30 +66,28 @@ export default function SimulationEngine() {
       return;
     }
 
-    const unsubSim = onSnapshot(
-      doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.CONFIG),
-      (docSnap) => {
-        const config = docSnap.data();
-        configRef.current = config;
-        const isRunning = config?.status === 'RUNNING';
-        const intervalSec = Math.max(5, config?.priceUpdateIntervalSeconds || 5);
+    const unsubSim = onSnapshot(simDoc('config'), (docSnap) => {
+      const config = docSnap.data();
+      configRef.current = config;
+      const isRunning = config?.status === 'RUNNING';
+      // Sync cadence: defaults to 10s for real-time exchange feeds
+      const intervalSec = Math.max(5, config?.priceUpdateIntervalSeconds || 10);
 
-        if (isRunning) {
-          // Clear old interval and start fresh if interval changed
-          if (engineRef.current) clearInterval(engineRef.current);
-          engineRef.current = setInterval(() => {
-            tickPrices();
-          }, intervalSec * 1000);
-        } else {
-          // ✅ Simulation stopped/paused — kill the interval
-          // Price history stops being written the moment status != RUNNING
-          if (engineRef.current) {
-            clearInterval(engineRef.current);
-            engineRef.current = null;
-          }
+      if (isRunning) {
+        if (engineRef.current) {
+          clearInterval(engineRef.current);
+        }
+        // Poll and sync real market prices
+        engineRef.current = setInterval(() => {
+          syncMarketPrices();
+        }, intervalSec * 1000);
+      } else {
+        if (engineRef.current) {
+          clearInterval(engineRef.current);
+          engineRef.current = null;
         }
       }
-    );
+    });
 
     return () => {
       unsubSim();
@@ -85,139 +96,53 @@ export default function SimulationEngine() {
         engineRef.current = null;
       }
     };
-  }, [user?.uid]);
+  }, [user?.uid, sessionId]);
 
-  const tickPrices = async () => {
+  const syncMarketPrices = async () => {
     if (isUpdatingRef.current || !user) return;
 
     try {
       const now = Date.now();
       const config = configRef.current;
+      const intervalSec = Math.max(5, config?.priceUpdateIntervalSeconds || 10);
+      const minIntervalMs = intervalSec * 1000 - 500;
 
-      // Double-check simulation is still RUNNING before writing anything
-      if (config?.status !== 'RUNNING') return;
-
-      // Heartbeat leader lock — only one tab writes at a time
-      const heartbeatRef = doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.HEARTBEAT);
+      // Heartbeat distributed leader lock so multi-tabs don't duplicate requests
+      const heartbeatRef = simDoc('heartbeat');
       const hbSnap = await getDoc(heartbeatRef);
       const lastTick = hbSnap.exists() ? (hbSnap.data()?.lastTick || 0) : 0;
-      const intervalSec = Math.max(5, config?.priceUpdateIntervalSeconds || 5);
 
-      if (now - lastTick < (intervalSec * 1000 - 500)) return;
+      if (now - lastTick < minIntervalMs) {
+        return;
+      }
 
       isUpdatingRef.current = true;
 
-      // Claim heartbeat
+      // Claim heartbeat turn
       await setDoc(heartbeatRef, {
         lastTick: now,
         leaderUid: user.uid,
-        updatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       }, { merge: true });
 
-      // Simulation timer auto-expire removed.
-      // Admin manually ends the simulation via "End & Finalize" button.
-
-      // Check if active news event has expired
-      if (config?.activeNewsEventId && config?.activeNewsEventExpiresAt) {
-        const expiresAt = config.activeNewsEventExpiresAt?.toMillis?.();
-        if (expiresAt && now >= expiresAt) {
-          // News effect expired — clear it, price stays where it is
-          await updateDoc(doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.CONFIG), {
-            activeNewsEventId: null,
-            activeNewsEventExpiresAt: null,
-          });
-          await setDoc(
-            doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.ACTIVE_EVENT),
-            { isExpired: true },
-            { merge: true }
-          );
-          console.log('News event expired — normal market resumed.');
-        }
-      }
-
-      // Get all active stocks
-      const stocksSnap = await getDocs(
-        query(collection(db, COLLECTIONS.STOCKS), where('isActive', '==', true))
-      );
-
-      if (stocksSnap.empty) return;
-
-      const batch = writeBatch(db);
-
-      for (const stockDoc of stocksSnap.docs) {
-        const stock = stockDoc.data();
-        const currentPrice: number = stock.currentPrice || 100;
-        const volatility: number = stock.volatility || 0.015;
-
-        // --- Normal Market: small random walk ---
-        const randomChange = (Math.random() - 0.5) * 2 * volatility;
-        let newPrice = currentPrice * (1 + randomChange);
-
-        // --- News Event Mode: add extra impact on top ---
-        if (config?.activeNewsEventId) {
-          const activeEventSnap = await getDoc(
-            doc(db, COLLECTIONS.SIMULATION, SIMULATION_DOCS.ACTIVE_EVENT)
-          );
-          if (activeEventSnap.exists() && !activeEventSnap.data()?.isExpired) {
-            const activeEvent = activeEventSnap.data();
-            const affectedStocks: { ticker: string; strength: string }[] =
-              activeEvent.affectedStocks || [];
-
-            const impact = affectedStocks.find(
-              (s) => s.ticker === stock.ticker
-            );
-
-            if (impact) {
-              const impactMap: Record<string, number> = {
-                STRONG_UP:     +0.012,
-                MODERATE_UP:   +0.007,
-                SLIGHT_UP:     +0.003,
-                NO_IMPACT:      0.000,
-                SLIGHT_DOWN:   -0.003,
-                MODERATE_DOWN: -0.007,
-                SHARP_DOWN:    -0.013,
-              };
-              const newsMultiplier = impactMap[impact.strength] ?? 0;
-              newPrice = newPrice * (1 + newsMultiplier);
-            }
-          }
-        }
-
-        // Floor: price never goes below $1
-        newPrice = Math.max(1, Math.round(newPrice * 100) / 100);
-
-        const change = Math.round((newPrice - stock.dayOpenPrice) * 100) / 100;
-        const changePercent =
-          Math.round(((newPrice - stock.dayOpenPrice) / stock.dayOpenPrice) * 10000) / 100;
-
-        // Update stock price
-        batch.update(stockDoc.ref, {
-          currentPrice: newPrice,
-          change,
-          changePercent,
-          lastUpdated: serverTimestamp(),
+      // Check if simulation timer has expired
+      if (config?.endTime?.toMillis && now >= config.endTime.toMillis() && config.status === 'RUNNING') {
+        await updateDoc(simDoc('config'), {
+          status: 'COMPLETED',
+          completedAt: serverTimestamp(),
         });
-
-        // ✅ Write price history ONLY while simulation is RUNNING
-        // (this block is already inside the RUNNING guard above,
-        //  but we double-check here for safety)
-        if (config?.status === 'RUNNING') {
-          const historyRef = doc(collection(db, COLLECTIONS.PRICE_HISTORY));
-          batch.set(historyRef, {
-            stockId: stockDoc.id,
-            ticker: stock.ticker,
-            price: newPrice,
-            timestamp: serverTimestamp(),
-            activeNewsEventId: config?.activeNewsEventId || null,
-          });
+        if (engineRef.current) {
+          clearInterval(engineRef.current);
+          engineRef.current = null;
         }
+        isUpdatingRef.current = false;
+        return;
       }
 
-      await batch.commit();
-      // Price history is kept in full while the simulation is RUNNING — no deletion.
-      // Writes automatically stop the moment status leaves RUNNING (see guard above).
+      // Fetch real-time market quotes and sync them directly to Firestore
+      await syncLiveMarketPrices(sessionId);
     } catch (err) {
-      console.warn('Price tick error:', err);
+      console.warn('Real-Time Market Sync Notice:', err);
     } finally {
       isUpdatingRef.current = false;
     }
