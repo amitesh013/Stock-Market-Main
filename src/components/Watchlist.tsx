@@ -262,7 +262,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
   const isAdmin = userData?.role === 'admin';
 
   return (
-    <div className="bg-white rounded-2xl shadow-xs border border-zinc-200/90 overflow-hidden flex flex-col h-full max-h-[680px] min-h-0">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xs">
       {/* 1. Market Telemetry Ribbon */}
       <div className="bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-3 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3">
@@ -487,7 +487,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
       {/* 3. Main Display: TABLE or GRID */}
       {viewMode === 'TABLE' ? (
         /* Professional Terminal Table View */
-        <div className="flex-1 min-h-0 overflow-auto">
+        <div className="min-w-0 overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-zinc-200/80 bg-zinc-50/60 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
@@ -626,7 +626,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
         </div>
       ) : (
         /* Bento Card View (Carefully proportioned with min width) */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4.5 p-5">
+        <div className="grid grid-cols-1 gap-4 p-3 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
           {filteredStocks.map((stock) => {
             const flash = tickFlash[stock.id];
             const flashClass =

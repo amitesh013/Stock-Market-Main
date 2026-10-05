@@ -73,7 +73,7 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
           <Portfolio onOpenChart={handleOpenStock} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[520px] min-h-0">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1 min-h-0">
               <NewsFeed onSelectTicker={(ticker) => {
                 // If ticker clicked in news, find and open that stock
@@ -99,7 +99,7 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
       {/* Tab: News & Catalysts */}
       {activeTab === 'NEWS' && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:h-[calc(100vh-15rem)] lg:min-h-[520px] min-h-0">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2 min-h-0 order-2 lg:order-1">
             <NewsFeed />
           </div>
@@ -114,7 +114,7 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
 
       {/* Tab: Leaderboard */}
       {activeTab === 'LEADERBOARD' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-15rem)] lg:min-h-[520px] min-h-0">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 min-h-0">
             <Leaderboard />
           </div>

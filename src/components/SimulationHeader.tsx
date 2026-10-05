@@ -49,7 +49,7 @@ export default function SimulationHeader({ simulationConfig, onOpenPodium }: Sim
                 <span className="text-base font-extrabold text-zinc-900 tracking-tight block leading-none">
                   FinQuest
                 </span>
-                <span className="hidden text-[10px] text-zinc-400 font-semibold tracking-wider uppercase sm:block">
+                <span className="block text-[9px] text-zinc-400 font-semibold tracking-wider uppercase sm:text-[10px]">
                   Stock Market Simulator
                 </span>
               </div>

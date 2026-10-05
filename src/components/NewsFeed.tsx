@@ -50,7 +50,7 @@ export default function NewsFeed({ onSelectTicker }: NewsFeedProps) {
   });
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full max-h-[520px] min-h-0">
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex flex-wrap gap-2 items-center justify-between">
         <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export default function NewsFeed({ onSelectTicker }: NewsFeedProps) {
       </div>
 
       {/* News List */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+      <div className="space-y-2 p-3">
         {filteredNews.map(item => {
           return (
             <div

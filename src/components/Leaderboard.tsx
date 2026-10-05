@@ -55,7 +55,7 @@ export default function Leaderboard() {
   const top3 = users.slice(0, 3);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full max-h-[520px] min-h-0">
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {/* Header */}
       <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ export default function Leaderboard() {
 
       {/* Top 3 Podium Cards */}
       {top3.length > 0 && (
-        <div className="p-3 bg-zinc-50/50 border-b border-zinc-100 grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-1 gap-2 border-b border-zinc-100 bg-zinc-50/50 p-3 text-center sm:grid-cols-3">
           {top3.map((u, i) => {
             const medals = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
             const bgGradients = [
@@ -132,8 +132,8 @@ export default function Leaderboard() {
       </div>
 
       {/* Leaderboard Table */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <table className="w-full text-sm text-left">
+      <div className="min-w-0 overflow-x-auto">
+        <table className="min-w-[560px] w-full text-sm text-left">
           <thead className="text-[11px] uppercase font-semibold text-zinc-500 bg-zinc-50/80 border-b border-zinc-100 sticky top-0">
             <tr>
               <th className="px-3.5 py-2">Rank</th>

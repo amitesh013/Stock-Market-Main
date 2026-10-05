@@ -112,23 +112,23 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
             <Briefcase className="w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="font-bold text-zinc-900 text-sm">My Portfolio & Asset Allocation</h3>
             <span className="text-[11px] text-zinc-500">Live position balances and valuation metrics</span>
           </div>
         </div>
-        <div className="text-xs text-zinc-500 font-medium">
+        <div className="pl-10 text-xs font-medium text-zinc-500 sm:pl-0">
           Starting Cash: <span className="font-bold text-zinc-700">${startingBalance.toLocaleString()}</span>
         </div>
       </div>
       
       {/* Top Stat Metrics */}
-      <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-4 border-b border-zinc-100 bg-white">
+      <div className="grid grid-cols-1 gap-3 border-b border-zinc-100 bg-white p-3 sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-4">
         <div className="bg-zinc-50/80 p-3.5 rounded-xl border border-zinc-200/80">
           <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Total Net Worth</div>
           <div className="text-2xl font-extrabold text-zinc-900 tracking-tight">
@@ -218,7 +218,7 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
 
       {/* Holdings Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
+        <table className="min-w-[700px] w-full text-sm text-left">
           <thead className="text-xs uppercase font-semibold text-zinc-500 bg-zinc-50/50 border-b border-zinc-100">
             <tr>
               <th className="px-4 py-3">Asset</th>
