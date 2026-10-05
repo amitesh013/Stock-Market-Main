@@ -38,18 +38,18 @@ export default function SimulationHeader({ simulationConfig, onOpenPodium }: Sim
   return (
     <header className="bg-white border-b border-zinc-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 gap-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 sm:h-16 sm:flex-nowrap sm:py-0">
           {/* Logo & Status */}
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link to="/" className="flex min-w-0 shrink items-center gap-2 group">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs transition-transform group-hover:scale-105">
                 <Activity className="w-5 h-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-base font-extrabold text-zinc-900 tracking-tight block leading-none">
                   FinQuest
                 </span>
-                <span className="text-[10px] text-zinc-400 font-semibold tracking-wider uppercase">
+                <span className="hidden text-[10px] text-zinc-400 font-semibold tracking-wider uppercase sm:block">
                   Stock Market Simulator
                 </span>
               </div>
@@ -91,7 +91,7 @@ export default function SimulationHeader({ simulationConfig, onOpenPodium }: Sim
 
 
           {/* User Portfolio Snapshot & Nav */}
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
             {/* Quick Balance Preview */}
             <div className="hidden md:block text-right pr-2">
               <div className="text-[11px] text-zinc-500 font-medium">Net Worth</div>
@@ -104,7 +104,7 @@ export default function SimulationHeader({ simulationConfig, onOpenPodium }: Sim
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex items-center gap-1.5 bg-zinc-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1.5 rounded-xl bg-zinc-100 p-1">
               <Link
                 to={tradePath}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${

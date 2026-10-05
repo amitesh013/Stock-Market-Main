@@ -38,8 +38,8 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
   return (
     <div className="space-y-6 min-w-0">
       {/* Floor Navigation Bar */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-        <div className="flex items-center gap-1 sm:gap-2 bg-zinc-100 p-1 rounded-xl text-xs font-bold overflow-x-auto">
+      <div className="min-w-0 border-b border-zinc-200 pb-3">
+        <div className="flex min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-zinc-100 p-1 text-xs font-bold sm:gap-2">
           {[
             { id: 'OVERVIEW', label: 'Market & Trading', icon: BarChart3 },
             { id: 'PORTFOLIO', label: 'My Portfolio & Allocation', icon: BriefcaseBusiness },
@@ -49,7 +49,7 @@ export default function ParticipantDashboard({ onOpenStockChart }: ParticipantDa
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-1.5 transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? 'bg-white text-zinc-900 shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800'

@@ -143,7 +143,7 @@ function DetailedCandleChart({ candles }: { candles: Candle[] }) {
   };
 
   return (
-    <div className="relative h-[min(68vh,540px)] min-h-[360px] w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm sm:min-h-[450px]">
+    <div className="detailed-candle-chart relative h-[min(68vh,540px)] min-h-[340px] w-full min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm sm:min-h-[450px]">
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-full w-full" role="img" aria-label="Detailed OHLC candlestick chart">
         {[0, 1, 2, 3, 4, 5].map((step) => {
           const value = max - ((max - min) * step) / 5;
@@ -356,15 +356,15 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs sm:p-6">
-      <div className="my-0 w-full max-w-6xl overflow-visible rounded-2xl border border-zinc-200 bg-white shadow-2xl sm:my-2">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-2 backdrop-blur-xs sm:p-6">
+      <div className="my-0 w-full min-w-0 max-w-6xl overflow-visible rounded-2xl border border-zinc-200 bg-white shadow-2xl sm:my-2">
         {/* Header Bar */}
-        <div className="p-5 border-b border-zinc-200 bg-zinc-50/80 flex justify-between items-center">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/80 p-3 sm:p-5">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-xs">
               {stock.ticker.slice(0, 2)}
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-zinc-900 tracking-tight">{stock.ticker}</h2>
                 <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-zinc-200 text-zinc-700">
@@ -391,7 +391,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
         {/* Content Layout */}
         <div className="grid grid-cols-1 items-start divide-y divide-zinc-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
           {/* Chart Section */}
-          <div className="lg:col-span-2 p-5 space-y-4">
+          <div className="min-w-0 space-y-4 p-3 sm:p-5 lg:col-span-2">
             {/* Price Banner */}
             <div className="flex flex-wrap items-baseline justify-between gap-3 pb-3 border-b border-zinc-100">
               <div>
@@ -422,13 +422,13 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
             </div>
 
             {/* Chart mode and timeframe controls */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                   <Activity className="w-3.5 h-3.5 text-blue-600" />
                   Price Action
                 </span>
-                <div className="flex bg-zinc-100 p-0.5 rounded-lg text-xs">
+                <div className="flex shrink-0 rounded-lg bg-zinc-100 p-0.5 text-xs">
                   {(['NORMAL', 'DETAILED'] as const).map((mode) => (
                     <button
                       key={mode}
@@ -442,7 +442,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
                   ))}
                 </div>
               </div>
-              <div className="flex bg-zinc-100 p-0.5 rounded-lg text-xs">
+              <div className="flex max-w-full shrink-0 overflow-x-auto rounded-lg bg-zinc-100 p-0.5 text-xs">
                 {(chartMode === 'NORMAL' ? (['1M', '5M', '15M', 'ALL'] as const) : (['1M', '5M', '15M', '30M', '1H'] as const)).map((tf) => (
                   <button
                     key={tf}
@@ -463,7 +463,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
                 ? <DetailedCandleChart candles={detailedCandles} />
                 : <div className="flex h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-xs text-zinc-500">No session price history available yet.</div>
             ) : (
-              <div className="h-72 w-full bg-white rounded-2xl p-3 border border-zinc-200 shadow-sm">
+              <div className="h-72 min-h-[280px] w-full rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm sm:p-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={filteredData} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                     <defs>
