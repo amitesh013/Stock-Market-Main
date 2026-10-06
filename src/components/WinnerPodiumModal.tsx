@@ -5,6 +5,7 @@ import { useAuth } from './AuthProvider';
 import { useSession } from '../lib/SessionContext';
 import { COLLECTIONS, SESSION_SUBCOLLECTIONS } from '../lib/shared-types';
 import { Trophy, Award, TrendingUp, CheckCircle, Download, X } from 'lucide-react';
+import { calculatePortfolioMetrics } from '../lib/portfolio';
 
 interface WinnerPodiumModalProps {
   onClose: () => void;
@@ -17,30 +18,45 @@ export default function WinnerPodiumModal({ onClose }: WinnerPodiumModalProps) {
 
   useEffect(() => {
     if (!sessionId) return;
-    const unsub = onSnapshot(
+    let portfolioSnapshot: any[] = [];
+    let holdingSnapshot: any[] = [];
+    let stockSnapshot: Record<string, any> = {};
+    const updateRankings = () => {
+      const list = portfolioSnapshot.map((portfolio) => {
+        const metrics = calculatePortfolioMetrics(
+          portfolio,
+          holdingSnapshot.filter((holding) => holding.userId === portfolio.uid),
+          stockSnapshot,
+        );
+        return {
+          ...portfolio,
+          id: portfolio.uid,
+          name: portfolio.displayName || portfolio.name || 'Trader',
+          portfolioValue: metrics.portfolioValue,
+          startingBalance: Number(portfolio.startingCash) || 100000,
+          pnl: metrics.pnl,
+          returnPct: metrics.returnPct,
+        };
+      }).sort((a, b) => b.portfolioValue - a.portfolioValue);
+      setRankedUsers(list);
+    };
+    const unsubPortfolios = onSnapshot(
       collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.PORTFOLIOS),
       (snap) => {
-        const list = snap.docs.map(d => {
-          const val = d.data();
-          const start = Number(val.startingCash || 100000);
-          const portVal = Number(val.portfolioValue ?? val.currentCash ?? start);
-          const pnl = portVal - start;
-          const returnPct = start > 0 ? (pnl / start) * 100 : 0;
-          return {
-            id: d.id,
-            ...val,
-            name: val.displayName || val.name || 'Trader',
-            portfolioValue: portVal,
-            startingBalance: start,
-            pnl,
-            returnPct,
-          };
-        });
-        list.sort((a, b) => b.portfolioValue - a.portfolioValue);
-        setRankedUsers(list);
+        portfolioSnapshot = snap.docs.map(d => d.data());
+        updateRankings();
       }
     );
-    return unsub;
+    const unsubHoldings = onSnapshot(collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.HOLDINGS), (snap) => {
+      holdingSnapshot = snap.docs.map(d => d.data());
+      updateRankings();
+    });
+    const unsubStocks = onSnapshot(collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.STOCKS), (snap) => {
+      stockSnapshot = {};
+      snap.forEach(d => { stockSnapshot[d.id] = d.data(); });
+      updateRankings();
+    });
+    return () => { unsubPortfolios(); unsubHoldings(); unsubStocks(); };
   }, [sessionId]);
 
   const firstPlace = rankedUsers[0];

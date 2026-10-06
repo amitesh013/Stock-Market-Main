@@ -47,6 +47,7 @@ import {
   type Session, type SessionStatus
 } from '../lib/shared-types';
 import { createSession, seedSessionStocks } from '../lib/sessionManager';
+import { calculatePortfolioMetrics } from '../lib/portfolio';
 import { useAuth } from '../components/AuthProvider';
 import { 
   resetSimulationState,
@@ -734,13 +735,13 @@ export default function AdminPanel() {
   // Export Full CSV
   const handleExportCSV = () => {
     let csv = 'Rank,Trader Name,Email,Role,Starting Balance,Cash Balance,Portfolio Net Worth,Total Return ($),Return (%)\n';
-    users.forEach((u, i) => {
+    inspectorUsers.forEach((u, i) => {
       const start = Number(u.startingBalance || 100000);
-      const portVal = Number(u.portfolioValue ?? u.currentCash ?? 100000);
-      const pnl = portVal - start;
-      const returnPct = start > 0 ? (pnl / start) * 100 : 0;
+      const portVal = Number(u.portfolioValue);
+      const pnl = Number(u.pnl);
+      const returnPct = Number(u.returnPct);
 
-      csv += `${i + 1},"${u.name || ''}","${u.email || ''}","${u.role || 'participant'}",${start},${(u.currentCash || 0).toFixed(2)},${portVal.toFixed(2)},${pnl.toFixed(2)},${returnPct.toFixed(2)}%\n`;
+      csv += `${i + 1},"${u.name || ''}","${u.email || ''}","${u.role || 'participant'}",${start},${Number(u.cashBalance).toFixed(2)},${portVal.toFixed(2)},${pnl.toFixed(2)},${returnPct.toFixed(2)}%\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -763,6 +764,11 @@ export default function AdminPanel() {
   const intervalSec = activeSession?.priceUpdateIntervalSeconds || config.priceUpdateIntervalSeconds || 30;
   const inspectorUsers = currentSessionPortfolios.map((portfolio) => {
     const profile = users.find((candidate) => candidate.id === portfolio.uid);
+    const metrics = calculatePortfolioMetrics(
+      portfolio,
+      allHoldings.filter((holding) => holding.userId === portfolio.uid),
+      Object.fromEntries(stocks.map((stock) => [stock.id, stock])),
+    );
     return {
       ...profile,
       ...portfolio,
@@ -771,7 +777,10 @@ export default function AdminPanel() {
       email: profile?.email || '',
       role: profile?.role || 'participant',
       startingBalance: portfolio.startingCash,
-      portfolioValue: portfolio.portfolioValue,
+      portfolioValue: metrics.portfolioValue,
+      cashBalance: metrics.cashBalance,
+      pnl: metrics.pnl,
+      returnPct: metrics.returnPct,
     };
   });
 
@@ -1366,8 +1375,8 @@ export default function AdminPanel() {
                 <tbody className="divide-y divide-zinc-100">
                   {inspectorUsers.map(u => {
                     const start = Number(u.startingBalance || 100000);
-                    const portVal = Number(u.portfolioValue ?? u.currentCash ?? 100000);
-                    const pnl = portVal - start;
+                    const portVal = Number(u.portfolioValue);
+                    const pnl = Number(u.pnl);
                     const isPositive = pnl >= 0;
                     const isExpanded = expandedUserId === u.id;
 
@@ -1403,7 +1412,7 @@ export default function AdminPanel() {
                             </button>
                           </td>
                           <td className="px-4 py-3 text-right text-zinc-700 font-semibold text-xs">
-                            ${Number(u.currentCash ?? 100000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${Number(u.cashBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-4 py-3 text-right font-extrabold text-zinc-900 text-xs">
                             ${Number(portVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1414,14 +1423,14 @@ export default function AdminPanel() {
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <button
-                                onClick={() => handleAdjustUserCash(u.id, Number(u.currentCash || 0), 10000)}
+                                onClick={() => handleAdjustUserCash(u.id, Number(u.cashBalance || 0), 10000)}
                                 className="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded text-[11px] font-bold transition-colors"
                                 title="Add $10,000 cash"
                               >
                                 +$10k
                               </button>
                               <button
-                                onClick={() => handleAdjustUserCash(u.id, Number(u.currentCash || 0), -10000)}
+                                onClick={() => handleAdjustUserCash(u.id, Number(u.cashBalance || 0), -10000)}
                                 className="px-2 py-0.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded text-[11px] font-bold transition-colors"
                                 title="Deduct $10,000 cash"
                               >

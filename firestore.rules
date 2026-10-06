@@ -47,8 +47,8 @@ service cloud.firestore {
 
       // ── Portfolios (per session, per user) ────────────────────────────────
       match /portfolios/{uid} {
-        // Each user reads their own; admin reads all
-        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+        // Portfolio balances are visible to signed-in session users for the live leaderboard.
+        allow read: if isSignedIn();
         // Created by sessionManager.joinSession (authenticated user, own doc only)
         allow create: if isSignedIn() && request.auth.uid == uid;
         // Updated by trade engine via runTransaction (authenticated)

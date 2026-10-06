@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from './AuthProvider';
 import { useSession } from '../lib/SessionContext';
-import { COLLECTIONS, SESSION_SUBCOLLECTIONS } from '../lib/shared-types';
 import { Briefcase, ArrowRightLeft, PieChart as PieIcon, Zap, TrendingUp, TrendingDown } from 'lucide-react';
 import TradeModal from './TradeModal';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { calculatePortfolioMetrics, subscribeToLivePortfolio } from '../lib/portfolio';
 
 interface PortfolioProps {
   onOpenChart?: (stock: any) => void;
@@ -24,39 +22,22 @@ const ALLOCATION_COLORS = [
 ];
 
 export default function Portfolio({ onOpenChart }: PortfolioProps) {
-  const { user, userData } = useAuth();
+  const { user } = useAuth();
   const { sessionId } = useSession();
   const [holdings, setHoldings] = useState<any[]>([]);
   const [stocks, setStocks] = useState<Record<string, any>>({});
+  const [sessionPortfolio, setSessionPortfolio] = useState<Record<string, unknown>>();
   const [tradeStock, setTradeStock] = useState<any | null>(null);
 
   useEffect(() => {
     if (!user || !sessionId) return;
     
-    // Listen to user's holdings in session
-    const qH = query(
-      collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.HOLDINGS),
-      where('userId', '==', user.uid)
-    );
-    const unsubH = onSnapshot(qH, (snap) => {
-      setHoldings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    // Listen to all active stocks in session
-    const unsubS = onSnapshot(
-      collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.STOCKS),
-      (snap) => {
-        const stockMap: Record<string, any> = {};
-        snap.forEach(d => { stockMap[d.id] = { id: d.id, ...d.data() }; });
-        setStocks(stockMap);
-      }
-    );
-
-    return () => { unsubH(); unsubS(); };
+    return subscribeToLivePortfolio(sessionId, user.uid, (state) => {
+      setSessionPortfolio(state.portfolio);
+      setHoldings(state.holdings);
+      setStocks(state.stocks);
+    }, (error) => console.error('Portfolio data subscription error:', error));
   }, [user, sessionId]);
-
-  const cash = userData?.currentCash ?? 100000;
-  let totalHoldingsValue = 0;
 
   const enrichedHoldings = holdings.map(h => {
     const stock = stocks[h.stockId];
@@ -64,7 +45,6 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
     
     const stockPrice = Number(stock.currentPrice) || 0;
     const currentValue = h.quantity * stockPrice;
-    totalHoldingsValue += currentValue;
     const costBasis = h.quantity * (Number(h.averageBuyPrice) || 0);
     const pnl = currentValue - costBasis;
     const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
@@ -82,22 +62,10 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
     };
   }).filter(Boolean);
 
-  const totalPortfolioValue = Math.round((cash + totalHoldingsValue) * 100) / 100;
-  const startingBalance = userData?.startingBalance || 100000;
-  const totalPnl = totalPortfolioValue - startingBalance;
-  const totalPnlPercent = startingBalance > 0 ? (totalPnl / startingBalance) * 100 : 0;
+  const metrics = calculatePortfolioMetrics(sessionPortfolio, holdings, stocks);
+  const { cashBalance: cash, holdingsValue: totalHoldingsValue, portfolioValue: totalPortfolioValue, pnl: totalPnl, returnPct: totalPnlPercent } = metrics;
+  const startingBalance = Number(sessionPortfolio?.startingCash) || 100000;
   const isTotalPositive = totalPnl >= 0;
-
-  // Auto-sync portfolio value in Firestore if it drifts
-  useEffect(() => {
-    if (!user || !userData) return;
-    const currentStoredVal = userData.portfolioValue || 0;
-    if (Math.abs(currentStoredVal - totalPortfolioValue) > 0.05) {
-      updateDoc(doc(db, 'users', user.uid), {
-        portfolioValue: totalPortfolioValue
-      }).catch(err => console.error('Portfolio value sync error:', err));
-    }
-  }, [user, userData?.portfolioValue, totalPortfolioValue]);
 
   // Data for Allocation Donut Chart
   const allocationData = [

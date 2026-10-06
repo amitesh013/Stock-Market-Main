@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSession } from '../lib/SessionContext';
+import { calculatePortfolioMetrics, subscribeToLivePortfolio } from '../lib/portfolio';
 
 interface SimulationHeaderProps {
   simulationConfig: any;
@@ -20,7 +21,7 @@ interface SimulationHeaderProps {
 }
 
 export default function SimulationHeader({ simulationConfig, onOpenPodium }: SimulationHeaderProps) {
-  const { userData, signOut } = useAuth();
+  const { user, userData, signOut } = useAuth();
   const { sessionId } = useSession();
   const location = useLocation();
   const status = simulationConfig?.status || 'NOT_STARTED';
@@ -29,10 +30,29 @@ export default function SimulationHeader({ simulationConfig, onOpenPodium }: Sim
 
   const isAdmin = userData?.role === 'admin';
   const tradePath = isAdmin && sessionId ? `/session/${sessionId}` : '/';
-  const currentCash = Number(userData?.currentCash || 0);
-  const portfolioVal = Number(userData?.portfolioValue || currentCash);
-  const startingBal = Number(userData?.startingBalance || 100000);
-  const totalPnl = portfolioVal - startingBal;
+  const [liveMetrics, setLiveMetrics] = useState(() => calculatePortfolioMetrics(
+    userData ? { currentCash: userData.currentCash, startingCash: userData.startingBalance } : undefined,
+    [],
+    {},
+  ));
+
+  useEffect(() => {
+    if (!user || !sessionId || isAdmin) {
+      setLiveMetrics(calculatePortfolioMetrics(
+        userData ? { currentCash: userData.currentCash, startingCash: userData.startingBalance } : undefined,
+        [],
+        {},
+      ));
+      return;
+    }
+    return subscribeToLivePortfolio(sessionId, user.uid, (state) => {
+      setLiveMetrics(calculatePortfolioMetrics(state.portfolio, state.holdings, state.stocks));
+    }, (error) => console.error('Header portfolio subscription error:', error));
+  }, [isAdmin, sessionId, user, userData?.currentCash, userData?.startingBalance]);
+
+  const currentCash = liveMetrics.cashBalance;
+  const portfolioVal = liveMetrics.portfolioValue;
+  const totalPnl = liveMetrics.pnl;
   const isPositive = totalPnl >= 0;
 
   return (

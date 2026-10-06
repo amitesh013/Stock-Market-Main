@@ -5,6 +5,7 @@ import { useAuth } from './AuthProvider';
 import { useSession } from '../lib/SessionContext';
 import { COLLECTIONS, SESSION_SUBCOLLECTIONS } from '../lib/shared-types';
 import { Trophy, Search, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { calculatePortfolioMetrics } from '../lib/portfolio';
 
 export default function Leaderboard() {
   const { user } = useAuth();
@@ -15,32 +16,48 @@ export default function Leaderboard() {
 
   useEffect(() => {
     if (!sessionId) { setUsers([]); return; }
-    const unsub = onSnapshot(
+    let portfolioSnapshot: any[] = [];
+    let holdingSnapshot: any[] = [];
+    let stockSnapshot: Record<string, any> = {};
+    const updateUsers = () => {
+      const data = portfolioSnapshot.map((portfolio) => {
+        const metrics = calculatePortfolioMetrics(
+          portfolio,
+          holdingSnapshot.filter((holding) => holding.userId === portfolio.uid),
+          stockSnapshot,
+        );
+        return {
+          ...portfolio,
+          id: portfolio.uid,
+          name: portfolio.displayName || portfolio.name || 'Trader',
+          portfolioValue: metrics.portfolioValue,
+          cashBalance: metrics.cashBalance,
+          startingBalance: Number(portfolio.startingCash) || 100000,
+          pnl: metrics.pnl,
+          returnPct: metrics.returnPct,
+          role: portfolio.role || 'participant',
+        };
+      }).sort((a, b) => b.portfolioValue - a.portfolioValue);
+      setUsers(data);
+    };
+    const unsubPortfolios = onSnapshot(
       collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.PORTFOLIOS),
       (snap) => {
-        const data = snap.docs.map(d => {
-          const val = d.data();
-          const start = Number(val.startingCash || 100000);
-          const portVal = Number(val.portfolioValue ?? val.currentCash ?? start);
-          const pnl = portVal - start;
-          const returnPct = start > 0 ? (pnl / start) * 100 : 0;
-          return {
-            id: d.id,
-            ...val,
-            name: val.displayName || val.name || 'Trader',
-            portfolioValue: portVal,
-            startingBalance: start,
-            pnl,
-            returnPct,
-            role: val.role || 'participant',
-          };
-        });
-        data.sort((a, b) => b.portfolioValue - a.portfolioValue);
-        setUsers(data);
+        portfolioSnapshot = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        updateUsers();
       },
       (err) => console.error('Leaderboard fetch error:', err)
     );
-    return unsub;
+    const unsubHoldings = onSnapshot(collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.HOLDINGS), (snap) => {
+      holdingSnapshot = snap.docs.map(d => d.data());
+      updateUsers();
+    });
+    const unsubStocks = onSnapshot(collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.STOCKS), (snap) => {
+      stockSnapshot = {};
+      snap.forEach(d => { stockSnapshot[d.id] = d.data(); });
+      updateUsers();
+    });
+    return () => { unsubPortfolios(); unsubHoldings(); unsubStocks(); };
   }, [sessionId]);
 
   const filteredUsers = users.filter(u => {
@@ -138,6 +155,7 @@ export default function Leaderboard() {
             <tr>
               <th className="px-3.5 py-2">Rank</th>
               <th className="px-3.5 py-2">Trader</th>
+              <th className="px-3.5 py-2 text-right">Cash Balance</th>
               <th className="px-3.5 py-2 text-right">Net Worth</th>
               <th className="px-3.5 py-2 text-right">Return %</th>
             </tr>
@@ -168,6 +186,9 @@ export default function Leaderboard() {
                     </div>
                   </td>
                   <td className="px-3.5 py-2.5 text-right font-bold text-zinc-900 text-xs">
+                    ${u.cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-3.5 py-2.5 text-right font-bold text-zinc-900 text-xs">
                     ${u.portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className={`px-3.5 py-2.5 text-right text-xs font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
@@ -178,7 +199,7 @@ export default function Leaderboard() {
             })}
             {filteredUsers.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-zinc-400">
+                <td colSpan={5} className="px-4 py-12 text-center text-zinc-400">
                   <Users className="w-6 h-6 mx-auto mb-1 text-zinc-300" />
                   <p className="text-xs font-medium text-zinc-600">No matching participants</p>
                 </td>
