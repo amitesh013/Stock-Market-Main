@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useAuth } from './AuthProvider';
 import { executeTrade } from '../lib/trade';
 import { useSession } from '../lib/SessionContext';
+import { COLLECTIONS, SESSION_SUBCOLLECTIONS } from '../lib/shared-types';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface TradeModalProps {
@@ -24,7 +25,14 @@ export default function TradeModal({ stock, initialType = 'BUY', onClose }: Trad
 
   useEffect(() => {
     if (!user) return;
-    const holdingRef = doc(db, 'holdings', `${user.uid}_${stock.id}`);
+    if (!sessionId) return;
+    const holdingRef = doc(
+      db,
+      COLLECTIONS.SESSIONS,
+      sessionId,
+      SESSION_SUBCOLLECTIONS.HOLDINGS,
+      `${user.uid}_${stock.id}`,
+    );
     const unsub = onSnapshot(holdingRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -37,7 +45,7 @@ export default function TradeModal({ stock, initialType = 'BUY', onClose }: Trad
       }
     });
     return unsub;
-  }, [user, stock.id]);
+  }, [user, sessionId, stock.id]);
 
   const numQty = Number(quantity) || 0;
   const currentPrice = Number(stock.currentPrice) || 0;
