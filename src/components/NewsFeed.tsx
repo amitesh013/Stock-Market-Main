@@ -95,7 +95,7 @@ export default function NewsFeed({ onSelectTicker }: NewsFeedProps) {
       </div>
 
       {/* News List */}
-      <div className="space-y-2 p-3">
+      <div className="max-h-[520px] space-y-2 overflow-y-auto p-3">
         {filteredNews.map(item => {
           return (
             <div

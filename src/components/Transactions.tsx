@@ -40,7 +40,7 @@ export default function Transactions() {
   }, [user, sessionId]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col h-full max-h-[520px] min-h-0">
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       <div className="p-4 border-b border-zinc-200 bg-zinc-50/70 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -53,9 +53,9 @@ export default function Transactions() {
         </span>
       </div>
       
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs uppercase font-semibold text-zinc-500 bg-zinc-50/50 border-b border-zinc-100 sticky top-0">
+      <div className="min-w-0 max-h-[520px] overflow-auto">
+        <table className="min-w-[640px] w-full text-sm text-left">
+          <thead className="sticky top-0 z-10 bg-zinc-50/95 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-100">
             <tr>
               <th className="px-4 py-2.5">Time</th>
               <th className="px-4 py-2.5">Side</th>

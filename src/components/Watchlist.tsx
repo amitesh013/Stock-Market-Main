@@ -487,9 +487,9 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
       {/* 3. Main Display: TABLE or GRID */}
       {viewMode === 'TABLE' ? (
         /* Professional Terminal Table View */
-        <div className="min-w-0 overflow-x-auto">
+        <div className="min-w-0 max-h-[680px] overflow-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="border-b border-zinc-200/80 bg-zinc-50/60 text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                 <th className="py-3 px-5">Symbol & Asset</th>
                 <th className="py-3 px-4">Sector</th>
@@ -626,7 +626,7 @@ export default function Watchlist({ simulationStatus, onOpenStockChart }: Watchl
         </div>
       ) : (
         /* Bento Card View (Carefully proportioned with min width) */
-        <div className="grid grid-cols-1 gap-4 p-3 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+        <div className="grid max-h-[680px] grid-cols-1 gap-4 overflow-y-auto p-3 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
           {filteredStocks.map((stock) => {
             const flash = tickFlash[stock.id];
             const flashClass =

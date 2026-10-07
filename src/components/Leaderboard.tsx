@@ -148,9 +148,9 @@ export default function Leaderboard() {
       </div>
 
       {/* Leaderboard Table */}
-      <div className="min-w-0 overflow-x-auto">
+      <div className="min-w-0 max-h-[520px] overflow-auto">
         <table className="min-w-[460px] w-full text-sm text-left">
-          <thead className="text-[11px] uppercase font-semibold text-zinc-500 bg-zinc-50/80 border-b border-zinc-100 sticky top-0">
+          <thead className="sticky top-0 z-10 bg-zinc-50/95 text-[11px] uppercase font-semibold text-zinc-500 border-b border-zinc-100">
             <tr>
               <th className="px-3.5 py-2">Rank</th>
               <th className="px-3.5 py-2">Trader</th>

@@ -1249,9 +1249,9 @@ export default function AdminPanel() {
             </form>
 
             {/* Stocks Table */}
-            <div className="overflow-x-auto max-h-[320px]">
-              <table className="w-full text-sm text-left">
-                <thead className="text-[11px] uppercase font-semibold text-zinc-500 bg-zinc-50/70 border-b border-zinc-100 sticky top-0">
+            <div className="min-w-0 max-h-[320px] overflow-auto">
+              <table className="min-w-[700px] w-full text-sm text-left">
+                <thead className="sticky top-0 z-10 bg-zinc-50/95 text-[11px] uppercase font-semibold text-zinc-500 border-b border-zinc-100">
                   <tr>
                     <th className="px-3.5 py-2">Asset</th>
                     <th className="px-3.5 py-2">Sector</th>
@@ -1360,9 +1360,9 @@ export default function AdminPanel() {
               </div>
             </div>
 
-            <div className="overflow-x-auto min-h-[300px]">
-              <table className="w-full text-sm text-left">
-                <thead className="text-[11px] uppercase font-semibold text-zinc-500 bg-zinc-50/50 border-b border-zinc-100">
+            <div className="min-w-0 max-h-[520px] overflow-auto">
+              <table className="min-w-[780px] w-full text-sm text-left">
+                <thead className="sticky top-0 z-10 bg-zinc-50/95 text-[11px] uppercase font-semibold text-zinc-500 border-b border-zinc-100">
                   <tr>
                     <th className="px-4 py-2.5">Trader</th>
                     <th className="px-4 py-2.5">Role</th>

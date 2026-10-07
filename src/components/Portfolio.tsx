@@ -185,9 +185,9 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
       )}
 
       {/* Holdings Table */}
-      <div className="overflow-x-auto">
+      <div className="min-w-0 max-h-[420px] overflow-auto">
         <table className="min-w-[700px] w-full text-sm text-left">
-          <thead className="text-xs uppercase font-semibold text-zinc-500 bg-zinc-50/50 border-b border-zinc-100">
+          <thead className="sticky top-0 z-10 bg-zinc-50/95 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-100">
             <tr>
               <th className="px-4 py-3">Asset</th>
               <th className="px-4 py-3 text-right">Shares</th>
