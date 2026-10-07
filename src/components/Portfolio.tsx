@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from './AuthProvider';
 import { useSession } from '../lib/SessionContext';
-import { Briefcase, ArrowRightLeft, PieChart as PieIcon, Zap, TrendingUp, TrendingDown } from 'lucide-react';
-import TradeModal from './TradeModal';
+import { Briefcase, PieChart as PieIcon } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { calculatePortfolioMetrics, subscribeToLivePortfolio } from '../lib/portfolio';
 
@@ -27,7 +26,6 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
   const [holdings, setHoldings] = useState<any[]>([]);
   const [stocks, setStocks] = useState<Record<string, any>>({});
   const [sessionPortfolio, setSessionPortfolio] = useState<Record<string, unknown>>();
-  const [tradeStock, setTradeStock] = useState<any | null>(null);
 
   useEffect(() => {
     if (!user || !sessionId) return;
@@ -195,7 +193,6 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
               <th className="px-4 py-3 text-right">Current Price</th>
               <th className="px-4 py-3 text-right">Market Value</th>
               <th className="px-4 py-3 text-right">Unrealized P&L</th>
-              <th className="px-4 py-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -222,31 +219,12 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
                 <td className={`px-4 py-3 text-right font-semibold ${h.isPositive ? 'text-green-600' : 'text-red-600'}`}>
                   {h.isPositive ? '+' : ''}${h.pnl.toFixed(2)} <span className="text-xs font-normal">({h.pnlPercent.toFixed(1)}%)</span>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-1.5">
-                    <button
-                      onClick={() => setTradeStock(h.stock)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <ArrowRightLeft className="w-3 h-3" />
-                      Trade
-                    </button>
-                    {onOpenChart && (
-                      <button
-                        onClick={() => onOpenChart(h.stock)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors cursor-pointer"
-                      >
-                        Chart
-                      </button>
-                    )}
-                  </div>
-                </td>
               </tr>
             ))}
 
             {enrichedHoldings.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-zinc-500">
+                <td colSpan={6} className="px-4 py-12 text-center text-zinc-500">
                   <div className="max-w-xs mx-auto space-y-1">
                     <p className="font-semibold text-zinc-700">No open positions</p>
                     <p className="text-xs text-zinc-400">Click on any asset from the Market Watchlist or Ticker Tape to place a Buy order.</p>
@@ -258,12 +236,6 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
         </table>
       </div>
 
-      {tradeStock && (
-        <TradeModal
-          stock={tradeStock}
-          onClose={() => setTradeStock(null)}
-        />
-      )}
     </div>
   );
 }
