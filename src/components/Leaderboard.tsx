@@ -31,7 +31,6 @@ export default function Leaderboard() {
           id: portfolio.uid,
           name: portfolio.displayName || portfolio.name || 'Trader',
           portfolioValue: metrics.portfolioValue,
-          cashBalance: metrics.cashBalance,
           startingBalance: Number(portfolio.startingCash) || 100000,
           pnl: metrics.pnl,
           returnPct: metrics.returnPct,
@@ -150,12 +149,11 @@ export default function Leaderboard() {
 
       {/* Leaderboard Table */}
       <div className="min-w-0 overflow-x-auto">
-        <table className="min-w-[560px] w-full text-sm text-left">
+        <table className="min-w-[460px] w-full text-sm text-left">
           <thead className="text-[11px] uppercase font-semibold text-zinc-500 bg-zinc-50/80 border-b border-zinc-100 sticky top-0">
             <tr>
               <th className="px-3.5 py-2">Rank</th>
               <th className="px-3.5 py-2">Trader</th>
-              <th className="px-3.5 py-2 text-right">Cash Balance</th>
               <th className="px-3.5 py-2 text-right">Net Worth</th>
               <th className="px-3.5 py-2 text-right">Return %</th>
             </tr>
@@ -186,9 +184,6 @@ export default function Leaderboard() {
                     </div>
                   </td>
                   <td className="px-3.5 py-2.5 text-right font-bold text-zinc-900 text-xs">
-                    ${u.cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-3.5 py-2.5 text-right font-bold text-zinc-900 text-xs">
                     ${u.portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className={`px-3.5 py-2.5 text-right text-xs font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
@@ -199,7 +194,7 @@ export default function Leaderboard() {
             })}
             {filteredUsers.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-zinc-400">
+                <td colSpan={4} className="px-4 py-12 text-center text-zinc-400">
                   <Users className="w-6 h-6 mx-auto mb-1 text-zinc-300" />
                   <p className="text-xs font-medium text-zinc-600">No matching participants</p>
                 </td>

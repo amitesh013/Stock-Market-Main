@@ -96,11 +96,17 @@ export default function Portfolio({ onOpenChart }: PortfolioProps) {
       </div>
       
       {/* Top Stat Metrics */}
-      <div className="grid grid-cols-1 gap-3 border-b border-zinc-100 bg-white p-3 sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 border-b border-zinc-100 bg-white p-3 sm:grid-cols-2 sm:gap-4 sm:p-5 lg:grid-cols-4">
         <div className="bg-zinc-50/80 p-3.5 rounded-xl border border-zinc-200/80">
           <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Total Net Worth</div>
           <div className="text-2xl font-extrabold text-zinc-900 tracking-tight">
             ${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+        <div className="bg-zinc-50/80 p-3.5 rounded-xl border border-zinc-200/80">
+          <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Available Cash</div>
+          <div className="text-2xl font-extrabold text-zinc-900 tracking-tight">
+            ${cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="bg-zinc-50/80 p-3.5 rounded-xl border border-zinc-200/80">
