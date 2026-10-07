@@ -57,7 +57,7 @@ function buildCandles(history: any[], interval: DetailedInterval): Candle[] {
   const buckets = new Map<number, any[]>();
   const size = intervalMs[interval];
 
-  history.forEach((point) => {
+  (Array.isArray(history) ? history : []).forEach((point) => {
     const timestamp = Number(point.timestamp);
     const price = Number(point.price);
     if (!Number.isFinite(timestamp) || !Number.isFinite(price) || price <= 0) return;
@@ -216,17 +216,23 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
   const [quantity, setQuantity] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [historyError, setHistoryError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [holding, setHolding] = useState<{ quantity: number; averageBuyPrice: number } | null>(null);
+  const stockId = typeof stock?.id === 'string' ? stock.id : '';
+  const stockTicker = typeof stock?.ticker === 'string' ? stock.ticker : 'Stock';
+  const stockName = typeof stock?.name === 'string' ? stock.name : 'Selected stock';
+  const parsedStockPrice = Number(stock?.currentPrice);
+  const currentStockPrice = Number.isFinite(parsedStockPrice) && parsedStockPrice > 0 ? parsedStockPrice : 0;
 
   // Listen to user holding — session subcollection
   useEffect(() => {
-    if (!user || !stock || !sessionId) return;
+    if (!user || !stockId || !sessionId) return;
     const holdingRef = doc(
       db,
       COLLECTIONS.SESSIONS, sessionId,
       SESSION_SUBCOLLECTIONS.HOLDINGS,
-      `${user.uid}_${stock.id}`
+      `${user.uid}_${stockId}`
     );
     const unsub = onSnapshot(holdingRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -240,14 +246,14 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
       }
     });
     return unsub;
-  }, [user, stock, sessionId]);
+  }, [user, sessionId, stockId]);
 
   // Listen to price history — session subcollection
   useEffect(() => {
-    if (!stock || !sessionId) return;
+    if (!stockId || !sessionId) return;
     const q = query(
       collection(db, COLLECTIONS.SESSIONS, sessionId, SESSION_SUBCOLLECTIONS.PRICE_HISTORY),
-      where('stockId', '==', stock.id)
+      where('stockId', '==', stockId)
     );
     const unsub = onSnapshot(q, (snap) => {
       const items = snap.docs.map(d => {
@@ -258,19 +264,24 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
         return {
           price: Number(data.price),
           timestamp: timeMillis,
-          timeLabel: format(new Date(timeMillis), 'HH:mm:ss'),
+          timeLabel: Number.isFinite(timeMillis) ? format(new Date(timeMillis), 'HH:mm:ss') : '',
         };
-      });
+      }).filter((item) => Number.isFinite(item.price) && item.price > 0 && Number.isFinite(item.timestamp));
       items.sort((a, b) => a.timestamp - b.timestamp);
+      setHistoryError('');
       setHistory(items);
-    }, (err) => console.error('History fetch error:', err));
+    }, (err) => {
+      console.error('History fetch error:', err);
+      setHistoryError('Price history is not available yet.');
+      setHistory([]);
+    });
     return unsub;
-  }, [stock, sessionId]);
+  }, [sessionId, stockId]);
 
   // Filter history based on timeframe
   const filteredData = useMemo(() => {
     if (history.length === 0) {
-      const p = Number(stock.currentPrice) || 100;
+      const p = currentStockPrice || 100;
       return [
         { price: p * 0.995, timeLabel: 'Open' },
         { price: p, timeLabel: 'Now' },
@@ -285,9 +296,9 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
 
     const slice = timeframe === 'ALL' ? history : history.filter(h => h.timestamp >= cutoff);
     return slice.length > 0 ? slice : history.slice(-20);
-  }, [history, timeframe, stock.currentPrice]);
+  }, [history, timeframe, currentStockPrice]);
 
-  const currentPrice = Number(stock.currentPrice) || 0;
+  const currentPrice = currentStockPrice;
   const firstPrice = filteredData.length > 0 ? filteredData[0].price : currentPrice;
   const priceDiff = currentPrice - firstPrice;
   const priceDiffPercent = firstPrice > 0 ? (priceDiff / firstPrice) * 100 : 0;
@@ -325,7 +336,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
       return;
     }
     if (!isBuy && numQty > sharesOwned) {
-      setError(`You only own ${sharesOwned} shares of ${stock.ticker}`);
+      setError(`You only own ${sharesOwned} shares of ${stockTicker}`);
       return;
     }
 
@@ -333,8 +344,8 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
     setError('');
     try {
       // Pass sessionId explicitly — trade.ts now requires it
-      await executeTrade(sessionId, stock.id, tradeType, numQty);
-      setSuccessMsg(`Executed ${tradeType} for ${numQty} shares of ${stock.ticker}!`);
+      await executeTrade(sessionId, stockId, tradeType, numQty);
+      setSuccessMsg(`Executed ${tradeType} for ${numQty} shares of ${stockTicker}!`);
       setQuantity('');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
@@ -353,6 +364,19 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
       const toSell = Math.floor(sharesOwned * pct);
       setQuantity(toSell > 0 ? toSell : '');
     }
+
+    if (!stockId) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+            <p className="text-sm font-semibold text-zinc-800">Stock data is unavailable.</p>
+            <button onClick={onClose} className="mt-4 rounded-lg bg-zinc-900 px-4 py-2 text-xs font-bold text-white">
+              Close
+            </button>
+          </div>
+        </div>
+      );
+    }
   };
 
   return (
@@ -362,22 +386,22 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
         <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/80 p-3 sm:p-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow-xs">
-              {stock.ticker.slice(0, 2)}
+              {stockTicker.slice(0, 2)}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">{stock.ticker}</h2>
+                <h2 className="text-xl font-bold text-zinc-900 tracking-tight">{stockTicker}</h2>
                 <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-zinc-200 text-zinc-700">
-                  {stock.sector || 'Stock'}
+                  {stock?.sector || 'Stock'}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${
-                  stock.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  stock?.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${stock.isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  {stock.isActive ? 'Active Trading' : 'Halted'}
+                  <span className={`w-1.5 h-1.5 rounded-full ${stock?.isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                  {stock?.isActive ? 'Active Trading' : 'Halted'}
                 </span>
               </div>
-              <p className="text-xs text-zinc-500">{stock.name}</p>
+              <p className="text-xs text-zinc-500">{stockName}</p>
             </div>
           </div>
           <button
@@ -416,7 +440,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
                 </div>
                 <div className="bg-zinc-50 px-2.5 py-1 rounded-lg border border-zinc-100">
                   <span className="text-zinc-400 block text-[9px] uppercase font-semibold">Ann. Vol</span>
-                  <span className="font-bold text-blue-600">{((stock.volatility || 0.015) * 100).toFixed(1)}%</span>
+                  <span className="font-bold text-blue-600">{((Number(stock?.volatility) || 0.015) * 100).toFixed(1)}%</span>
                 </div>
               </div>
             </div>
@@ -461,7 +485,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
             {chartMode === 'DETAILED' ? (
               detailedCandles.length > 0
                 ? <DetailedCandleChart candles={detailedCandles} />
-                : <div className="flex h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-xs text-zinc-500">No session price history available yet.</div>
+                : <div className="flex h-80 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-xs text-zinc-500">{historyError || 'Price history is not available yet.'}</div>
             ) : (
               <div className="h-72 min-h-[280px] w-full rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm sm:p-3">
                 <ResponsiveContainer width="100%" height="100%">
@@ -553,7 +577,7 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
                 </div>
                 {!isBuy && sharesOwned === 0 && (
                   <p className="text-[11px] text-amber-600 pt-1 font-medium">
-                    You do not currently own shares of {stock.ticker}.
+                    You do not currently own shares of {stockTicker}.
                   </p>
                 )}
               </div>
@@ -617,8 +641,8 @@ export default function StockChartModal({ stock, simulationStatus, onClose }: St
               >
                 {loading ? 'Submitting...'
                   : !isMarketOpen ? 'Market Closed'
-                  : isBuy ? `Buy ${numQty > 0 ? `${numQty} ` : ''}${stock.ticker}`
-                  : `Sell ${numQty > 0 ? `${numQty} ` : ''}${stock.ticker}`}
+                  : isBuy ? `Buy ${numQty > 0 ? `${numQty} ` : ''}${stockTicker}`
+                  : `Sell ${numQty > 0 ? `${numQty} ` : ''}${stockTicker}`}
               </button>
             </form>
 
